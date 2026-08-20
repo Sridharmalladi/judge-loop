@@ -1,21 +1,28 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import Layout from "./components/Layout";
-import HomePage from "./pages/HomePage";
-import LiveRunPage from "./pages/LiveRunPage";
-import PastRunsPage from "./pages/PastRunsPage";
-import RunDetailPage from "./pages/RunDetailPage";
+import ParallaxBackground from "./components/ParallaxBackground";
+import TopBar from "./components/TopBar";
+import StartScreen from "./pages/StartScreen";
+import PipelineRunPage from "./pages/PipelineRunPage";
+import ArenaPage from "./pages/ArenaPage";
+import { useTheme } from "./hooks/useTheme";
+import { useAmbientMelody } from "./hooks/useAmbientMelody";
 
 export default function App() {
+  const { theme, toggle: toggleTheme } = useTheme();
+  const { on: soundOn, toggle: toggleSound } = useAmbientMelody();
+
   return (
     <BrowserRouter>
-      <Layout>
+      <ParallaxBackground />
+      <div className="relative z-10 min-h-screen">
+        <TopBar soundOn={soundOn} onToggleSound={toggleSound} theme={theme} onToggleTheme={toggleTheme} />
         <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/live" element={<LiveRunPage />} />
-          <Route path="/runs" element={<PastRunsPage />} />
-          <Route path="/runs/:id" element={<RunDetailPage />} />
+          <Route path="/" element={<StartScreen />} />
+          <Route path="/run/self-refine" element={<PipelineRunPage variant="self_refine" />} />
+          <Route path="/run/prompt-opt" element={<PipelineRunPage variant="prompt_optimization" />} />
+          <Route path="/run/arena" element={<ArenaPage />} />
         </Routes>
-      </Layout>
+      </div>
     </BrowserRouter>
   );
 }
