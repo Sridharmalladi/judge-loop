@@ -48,6 +48,10 @@ class ModelConfig(BaseModel):
 
     @property
     def display_name(self) -> str:
+        # Some providers' own model IDs are self-prefixed (Groq's
+        # "groq/compound-mini") — don't double it to "groq/groq/compound-mini".
+        if self.model_name.startswith(f"{self.provider.value}/"):
+            return self.model_name
         return f"{self.provider.value}/{self.model_name}"
 
 

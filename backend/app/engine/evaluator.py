@@ -68,26 +68,42 @@ def _build_criteria_block(criteria: EvaluationCriteria) -> str:
     return "\n".join(lines)
 
 
+def _clamp_score(value) -> float:
+    """Judges occasionally return an out-of-range or wrong-typed score
+    (e.g. "8/10", or 85 meant as a percentage) — clamp instead of letting
+    pydantic's ge=0/le=10 validation raise and crash the whole run."""
+    return max(0.0, min(10.0, float(value)))
+
+
+def _result_from(data: dict, raw: str) -> EvaluationResult:
+    return EvaluationResult(
+        score=_clamp_score(data["score"]),
+        critique=data.get("critique", ""),
+        strengths=data.get("strengths", []),
+        weaknesses=data.get("weaknesses", []),
+        suggestions=data.get("suggestions", []),
+        raw_judge_response=raw,
+    )
+
+
 def _parse_judge_response(raw: str) -> EvaluationResult:
     """Extract structured evaluation from the judge's response.
-    
+
     LLMs are unreliable JSON producers, so we try multiple strategies:
     1. Direct parse
     2. Extract JSON from markdown code blocks
     3. Regex fallback for score
+
+    Each tier catches JSON errors, missing/wrong-typed fields (KeyError,
+    ValueError, TypeError), and falls through to the next rather than
+    letting any of those crash the run — that's the whole point of having
+    fallback tiers.
     """
     # Try direct parse
     try:
         data = json.loads(raw.strip())
-        return EvaluationResult(
-            score=float(data["score"]),
-            critique=data.get("critique", ""),
-            strengths=data.get("strengths", []),
-            weaknesses=data.get("weaknesses", []),
-            suggestions=data.get("suggestions", []),
-            raw_judge_response=raw,
-        )
-    except (json.JSONDecodeError, KeyError):
+        return _result_from(data, raw)
+    except (json.JSONDecodeError, KeyError, ValueError, TypeError):
         pass
 
     # Try extracting JSON from markdown code block
@@ -95,15 +111,8 @@ def _parse_judge_response(raw: str) -> EvaluationResult:
     if json_match:
         try:
             data = json.loads(json_match.group(1))
-            return EvaluationResult(
-                score=float(data["score"]),
-                critique=data.get("critique", ""),
-                strengths=data.get("strengths", []),
-                weaknesses=data.get("weaknesses", []),
-                suggestions=data.get("suggestions", []),
-                raw_judge_response=raw,
-            )
-        except (json.JSONDecodeError, KeyError):
+            return _result_from(data, raw)
+        except (json.JSONDecodeError, KeyError, ValueError, TypeError):
             pass
 
     # Try finding JSON object anywhere in the text
@@ -111,24 +120,17 @@ def _parse_judge_response(raw: str) -> EvaluationResult:
     if brace_match:
         try:
             data = json.loads(brace_match.group(0))
-            return EvaluationResult(
-                score=float(data["score"]),
-                critique=data.get("critique", ""),
-                strengths=data.get("strengths", []),
-                weaknesses=data.get("weaknesses", []),
-                suggestions=data.get("suggestions", []),
-                raw_judge_response=raw,
-            )
-        except (json.JSONDecodeError, KeyError):
+            return _result_from(data, raw)
+        except (json.JSONDecodeError, KeyError, ValueError, TypeError):
             pass
 
     # Last resort: regex for score
-    score_match = re.search(r'"?score"?\s*:\s*(\d+\.?\d*)', raw)
-    score = float(score_match.group(1)) if score_match else 5.0
+    score_match = re.search(r'"?score"?\s*:\s*(-?\d+\.?\d*)', raw)
+    score = _clamp_score(score_match.group(1)) if score_match else 5.0
 
     logger.warning(f"Failed to parse judge JSON, falling back to score={score}")
     return EvaluationResult(
-        score=min(score, 10.0),
+        score=score,
         critique="Judge response could not be fully parsed.",
         raw_judge_response=raw,
     )
@@ -160,7 +162,12 @@ async def evaluate(
         prompt=user_prompt,
         system_prompt=system_prompt,
         temperature=0.3,  # Low temp for consistent scoring
-        max_tokens=800,
+        # Reasoning models (gpt-oss-*, nemotron-*) spend tokens on internal
+        # "thinking" before the final answer — 800 was enough for a plain
+        # instruct model's JSON but let a reasoning judge exhaust its whole
+        # budget mid-thought and never emit the verdict. Judge output is
+        # short regardless of model, so the extra headroom costs little.
+        max_tokens=2000,
     )
 
     evaluation = _parse_judge_response(result["content"])

@@ -96,6 +96,40 @@ class ModelAdapter(ABC):
             raise
 
 
+def parse_retry_after(value: Optional[str], default: float = 60.0) -> float:
+    """Retry-After can be delta-seconds ('60') or an HTTP-date
+    ('Wed, 21 Oct 2026 07:28:00 GMT') per RFC 9110 — float() only handles
+    the first form. Fall back to `default` rather than raising on the
+    second, since retry timing is advisory, not worth crashing the run for.
+    """
+    if not value:
+        return default
+    try:
+        return float(value)
+    except ValueError:
+        return default
+
+
+def extract_openai_content(data: dict, provider: str, model: str) -> tuple[str, str]:
+    """Pull (content, model) out of an OpenAI-compatible chat completion,
+    shared by every adapter that speaks that format (Groq, OpenRouter).
+
+    Reasoning models (gpt-oss-*, nemotron-*) can exhaust max_tokens on
+    internal "reasoning" and return content: null with the partial thought
+    under "reasoning" instead — fall back to that only when content is
+    genuinely absent, not when it's a legitimate empty string.
+    """
+    try:
+        message = data["choices"][0]["message"]
+    except (KeyError, IndexError):
+        raise AdapterError(provider, f"Unexpected response format: {data}")
+
+    content = message.get("content")
+    if content is None:
+        content = message.get("reasoning") or ""
+    return content, data.get("model", model)
+
+
 class AdapterError(Exception):
     """Raised when a model adapter encounters an unrecoverable error."""
     def __init__(self, provider: str, message: str, status_code: Optional[int] = None):

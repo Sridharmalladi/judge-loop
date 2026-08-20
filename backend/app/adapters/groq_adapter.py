@@ -6,7 +6,7 @@ Free tier: ~30 RPM, varies by model.
 
 import httpx
 from typing import Optional
-from .base import ModelAdapter, AdapterError, RateLimitError
+from .base import ModelAdapter, AdapterError, RateLimitError, extract_openai_content, parse_retry_after
 
 GROQ_API_URL = "https://api.groq.com/openai/v1"
 
@@ -56,21 +56,16 @@ class GroqAdapter(ModelAdapter):
             )
 
         if response.status_code == 429:
-            retry = response.headers.get("retry-after")
-            raise RateLimitError("groq", float(retry) if retry else 60.0)
+            raise RateLimitError("groq", parse_retry_after(response.headers.get("retry-after")))
 
         if response.status_code != 200:
             raise AdapterError("groq", f"HTTP {response.status_code}: {response.text}", response.status_code)
 
         data = response.json()
-        message = data["choices"][0]["message"]
-        # Reasoning models (gpt-oss-*) can hit max_tokens mid-thought and
-        # return content: null with the partial thinking under "reasoning"
-        # instead — surface that rather than crash downstream on null.
-        content = message.get("content") or message.get("reasoning") or ""
+        content, used_model = extract_openai_content(data, "groq", model)
         return {
             "content": content,
-            "model": data.get("model", model),
+            "model": used_model,
             "tokens_used": data.get("usage", {}).get("total_tokens", 0),
             "latency_ms": 0,  # Filled by _timed_generate
         }

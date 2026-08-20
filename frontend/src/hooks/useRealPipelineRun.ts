@@ -66,14 +66,20 @@ export function useRealPipelineRun({ prompt, strategy, provider, model, maxRound
   const [generatorLabel, setGeneratorLabel] = useState(`${provider}/${model}`);
 
   useEffect(() => {
-    // Local closure, not a ref — see the mock hooks for why a shared ref
+    // Defense in depth — PipelineRunPage's own effect redirects home when
+    // these are missing, but a hook shouldn't rely on the caller's timing
+    // to avoid opening a socket with an invalid request.
+    if (!prompt || !provider || !model) return;
+
+    // Local closures, not refs — see the mock hooks for why a shared ref
     // breaks this exact pattern under StrictMode's double-invoke.
     let isCancelled = false;
     const cancelled = () => isCancelled;
+    // Set once a terminal outcome has actually been applied to state —
+    // guards onclose from double-reporting after onmessage already handled
+    // a clean "complete"/"error" frame earlier in the chain.
+    let settled = false;
     const startedAt = Date.now();
-
-    const queue: RealIterationEvent[] = [];
-    let revealing = false;
 
     const timer = setInterval(() => {
       if (cancelled()) return;
@@ -131,9 +137,14 @@ export function useRealPipelineRun({ prompt, strategy, provider, model, maxRound
       updateStep("evaluation", { status: "complete", content: `Overall: ${scaled}/100` });
       await sleep(200, cancelled);
 
-      // 4. CRITIQUE — real judge critique/weaknesses/suggestions
+      // 4. CRITIQUE — real judge critique/strengths/weaknesses/suggestions
       const critiqueText =
-        [ev.critique, ...ev.weaknesses.map((w) => `• ${w}`), ...ev.suggestions.map((s) => `→ ${s}`)]
+        [
+          ev.critique,
+          ...ev.strengths.map((s) => `+ ${s}`),
+          ...ev.weaknesses.map((w) => `• ${w}`),
+          ...ev.suggestions.map((s) => `→ ${s}`),
+        ]
           .filter(Boolean)
           .join("\n") || "No critique returned.";
       await streamInto("critique", critiqueText);
@@ -149,30 +160,20 @@ export function useRealPipelineRun({ prompt, strategy, provider, model, maxRound
       await sleep(300, cancelled);
     }
 
-    async function consumeQueue() {
-      while (!cancelled()) {
-        const next = queue.shift();
-        if (next) {
-          revealing = true;
-          await revealIteration(next);
-          revealing = false;
-        } else {
-          await sleep(80, cancelled);
-        }
-      }
-    }
-    consumeQueue();
+    // A single chained promise sequences reveals in arrival order — every
+    // "iteration" message appends to the chain, and a terminal outcome
+    // (complete/error/close) attaches after it, so it never cuts off or
+    // visually clashes with a round still mid-reveal. Replaces an earlier
+    // array-queue + polling implementation that needed three cooperating
+    // pieces of state to express the same ordering guarantee.
+    let revealChain: Promise<void> = Promise.resolve();
 
-    // Runs onDrained once the reveal queue (and any in-flight reveal) is
-    // empty, so a "complete"/"error" message that arrives mid-animation
-    // doesn't cut off or visually clash with the round still revealing.
-    function afterQueueDrains(onDrained: () => void) {
-      if (cancelled()) return;
-      if (queue.length === 0 && !revealing) {
-        onDrained();
-      } else {
-        setTimeout(() => afterQueueDrains(onDrained), 100);
-      }
+    function settle(apply: () => void) {
+      revealChain = revealChain.then(() => {
+        if (cancelled() || settled) return;
+        settled = true;
+        apply();
+      });
     }
 
     const ws = new WebSocket(WS_URL);
@@ -194,16 +195,25 @@ export function useRealPipelineRun({ prompt, strategy, provider, model, maxRound
 
     ws.onmessage = (evt) => {
       if (cancelled()) return;
-      const msg: WsMessage = JSON.parse(evt.data);
+      let msg: WsMessage;
+      try {
+        msg = JSON.parse(evt.data);
+      } catch {
+        settle(() => {
+          setError("Received a malformed message from the server");
+          setState((s) => ({ ...s, isRunning: false }));
+        });
+        return;
+      }
 
       if (msg.type === "status") {
         setGeneratorLabel(msg.generator);
       } else if (msg.type === "iteration") {
-        queue.push(msg);
+        revealChain = revealChain.then(() => (cancelled() ? undefined : revealIteration(msg)));
       } else if (msg.type === "complete") {
-        afterQueueDrains(() => setState((s) => ({ ...s, isRunning: false, isDone: true })));
+        settle(() => setState((s) => ({ ...s, isRunning: false, isDone: true })));
       } else if (msg.type === "error") {
-        afterQueueDrains(() => {
+        settle(() => {
           setError(msg.error);
           setState((s) => ({ ...s, isRunning: false }));
         });
@@ -211,7 +221,21 @@ export function useRealPipelineRun({ prompt, strategy, provider, model, maxRound
     };
 
     ws.onerror = () => {
-      if (!cancelled()) setError("WebSocket connection failed");
+      settle(() => {
+        setError("WebSocket connection failed");
+        setState((s) => ({ ...s, isRunning: false }));
+      });
+    };
+
+    ws.onclose = () => {
+      // No prior complete/error frame means the connection dropped
+      // mid-run (backend restart, proxy timeout, network blip) — without
+      // this, the UI freezes on a blinking step forever with no recovery
+      // short of navigating away manually.
+      settle(() => {
+        setError("Connection closed unexpectedly");
+        setState((s) => ({ ...s, isRunning: false }));
+      });
     };
 
     return () => {

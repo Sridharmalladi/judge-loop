@@ -23,8 +23,8 @@ export default function StartScreen() {
       const first = modelsData.providers[0];
       setProvider(first);
       setModel(modelsData.models[first]?.[0] ?? "");
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelsData]);
 
   const canRunReal = Boolean(provider && model && !modelsError);
@@ -124,6 +124,8 @@ export default function StartScreen() {
           accent="var(--color-hud-green)"
           icon={<CarIcon />}
           onSelect={() => go("self_refine")}
+          disabled={!canRunReal}
+          disabledReason={modelsError ? "Backend unreachable" : "Waiting on model list from backend…"}
         />
         <TrackSelectCard
           title="CROSS-MODEL"
@@ -138,6 +140,8 @@ export default function StartScreen() {
           accent="var(--color-hud-pink)"
           icon={<GearIcon />}
           onSelect={() => go("prompt_optimization")}
+          disabled={!canRunReal}
+          disabledReason={modelsError ? "Backend unreachable" : "Waiting on model list from backend…"}
         />
       </div>
 
