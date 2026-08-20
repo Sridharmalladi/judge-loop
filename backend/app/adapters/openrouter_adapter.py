@@ -17,12 +17,22 @@ from .base import ModelAdapter, AdapterError, RateLimitError
 
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1"
 
-# Free-tier models (":free" suffix = $0/token). Rotates — check the URL above.
+# Free-tier models (":free" suffix = $0/token). Rotates — verified live
+# against GET /api/v1/models on 2026-08-20; re-check the URL above if one
+# of these starts 404ing with "unavailable for free."
+#
+# gpt-oss-20b and nemotron are reasoning models: they spend completion
+# tokens on an internal "reasoning" field before the final answer, and can
+# exhaust max_tokens mid-thought with no visible content at all (finish_reason
+# "length", content: null). Fine to offer, but not as the default — a plain
+# instruct model behaves predictably at low token budgets.
 OPENROUTER_MODELS = [
-    "deepseek/deepseek-r1:free",
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "google/gemini-2.0-flash-exp:free",
-    "qwen/qwen-2.5-72b-instruct:free",
+    "google/gemma-4-31b-it:free",
+    "z-ai/glm-5.2:free",
+    "liquid/lfm-2.5-2.6b:free",
+    "openai/gpt-oss-20b:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "nvidia/nemotron-3-nano-30b-a3b:free",
 ]
 
 
@@ -32,7 +42,7 @@ class OpenRouterAdapter(ModelAdapter):
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
-        model: str = "deepseek/deepseek-r1:free",
+        model: str = "google/gemma-4-31b-it:free",
         temperature: float = 0.7,
         max_tokens: int = 1024,
     ) -> dict:
@@ -68,8 +78,13 @@ class OpenRouterAdapter(ModelAdapter):
             raise AdapterError("openrouter", f"HTTP {response.status_code}: {response.text}", response.status_code)
 
         data = response.json()
+        message = data["choices"][0]["message"]
+        # Reasoning models can hit max_tokens mid-thought and return
+        # content: null with the partial thinking under "reasoning" instead
+        # — surface that rather than crash on a null response downstream.
+        content = message.get("content") or message.get("reasoning") or ""
         return {
-            "content": data["choices"][0]["message"]["content"],
+            "content": content,
             "model": data.get("model", model),
             "tokens_used": data.get("usage", {}).get("total_tokens", 0),
             "latency_ms": 0,

@@ -128,12 +128,12 @@ dist/
 ```
 # Model API keys (get free accounts)
 GROQ_API_KEY=your_key_here
-TOGETHER_API_KEY=your_key_here
+OPENROUTER_API_KEY=your_key_here
 GOOGLE_GEMINI_API_KEY=your_key_here
 
 # App config
 MAX_ITERATIONS=10
-DEFAULT_MODEL=groq/llama-3.1-8b-instant
+DEFAULT_MODEL=groq/groq-compound-mini
 RATE_LIMIT_RPM=30
 ```
 
