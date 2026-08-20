@@ -2,7 +2,7 @@
 BASE ADAPTER — The contract every model provider signs.
 
 This is the Adapter Pattern: we define ONE interface, and each provider 
-(Groq, Together, Gemini) implements it differently behind the scenes.
+(Groq, OpenRouter, Gemini) implements it differently behind the scenes.
 The engine doesn't know or care which provider it's talking to.
 
 WHY THIS MATTERS:

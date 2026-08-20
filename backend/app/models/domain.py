@@ -23,7 +23,7 @@ class RefinementStrategy(str, Enum):
 class ModelProvider(str, Enum):
     """Maps to adapter classes in adapters/. Adding a provider = adding one file."""
     GROQ = "groq"
-    TOGETHER = "together"
+    OPENROUTER = "openrouter"
     GEMINI = "gemini"
     HUGGINGFACE = "huggingface"
 

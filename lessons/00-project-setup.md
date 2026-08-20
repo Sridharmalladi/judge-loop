@@ -28,7 +28,7 @@ The frontend uses npm. You need to explain:
 - What does `package-lock.json` do and why is it committed to git?
 
 ### 4. Environment variables
-API keys (Groq, Together, Gemini) never go in code. We use `.env` files locally and environment variables in production.
+API keys (Groq, OpenRouter, Gemini) never go in code. We use `.env` files locally and environment variables in production.
 - Why not just hardcode the key during development?
 - What is `.env.example` for?
 

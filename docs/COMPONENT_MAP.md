@@ -63,8 +63,8 @@ code, explain the key decisions, and quiz me before moving on.
 **Connects to:** base.py (inherits), registry.py (registered)
 **Look for:** How rate limit errors are detected via HTTP 429 + retry-after header.
 
-## app/adapters/together_adapter.py — Together AI
-**Does:** Same shape as Groq — OpenAI-compatible. Different model catalog.
+## app/adapters/openrouter_adapter.py — OpenRouter
+**Does:** Same shape as Groq — OpenAI-compatible. Proxies to many providers' free-tier (":free"-suffixed) models — DeepSeek R1, Llama 3.3, Gemini Flash, Qwen — through one key.
 **Look for:** Same interface, different models. That's the adapter pattern working.
 
 ## app/adapters/gemini_adapter.py — Google Gemini

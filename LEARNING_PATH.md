@@ -44,7 +44,7 @@ before we write any code, and stop me if I'm about to make a mistake.
 |---|--------|---------------|--------------|
 | 00 | [Project setup](lessons/00-project-setup.md) | Repo structure, deps, dev environment | Monorepo layout, virtual envs |
 | 01 | [Data model](lessons/01-data-model.md) | Pydantic models for the entire system | Domain modeling, type safety |
-| 02 | [Model adapters](lessons/02-model-adapters.md) | Unified interface to Groq/Together/Gemini | Adapter pattern, async, error handling |
+| 02 | [Model adapters](lessons/02-model-adapters.md) | Unified interface to Groq/OpenRouter/Gemini | Adapter pattern, async, error handling |
 | 03 | [Evaluation engine](lessons/03-evaluation-engine.md) | LLM-as-Judge scoring system | Structured output, rubrics |
 | 04 | [Refinement loop](lessons/04-refinement-loop.md) | The core generate→evaluate→refine pipeline | Strategy pattern, convergence detection |
 | 05 | [API layer](lessons/05-api-layer.md) | FastAPI endpoints + WebSocket streaming | REST design, real-time data |
@@ -68,7 +68,7 @@ judge-loop/
 │   │   ├── adapters/
 │   │   │   ├── base.py             # Abstract model adapter
 │   │   │   ├── groq_adapter.py
-│   │   │   ├── together_adapter.py
+│   │   │   ├── openrouter_adapter.py
 │   │   │   ├── gemini_adapter.py
 │   │   │   └── registry.py         # Model registry
 │   │   ├── engine/

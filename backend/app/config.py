@@ -12,7 +12,7 @@ from typing import Optional
 class Settings(BaseSettings):
     # ── Model API keys ──
     groq_api_key: Optional[str] = None
-    together_api_key: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
     google_gemini_api_key: Optional[str] = None
     huggingface_api_key: Optional[str] = None
 
@@ -40,8 +40,8 @@ class Settings(BaseSettings):
         available = []
         if self.groq_api_key:
             available.append("groq")
-        if self.together_api_key:
-            available.append("together")
+        if self.openrouter_api_key:
+            available.append("openrouter")
         if self.google_gemini_api_key:
             available.append("gemini")
         if self.huggingface_api_key:

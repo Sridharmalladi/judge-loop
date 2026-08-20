@@ -62,7 +62,7 @@ class RefinementStrategy(str, Enum):
 class ModelProvider(str, Enum):
     """Supported providers — maps to adapter classes."""
     GROQ = "groq"
-    TOGETHER = "together"
+    OPENROUTER = "openrouter"
     GEMINI = "gemini"
     HUGGINGFACE = "huggingface"
 

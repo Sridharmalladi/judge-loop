@@ -9,7 +9,7 @@ provider = registering it here + writing the adapter file.
 from typing import Optional
 from .base import ModelAdapter, AdapterError
 from .groq_adapter import GroqAdapter, GROQ_MODELS
-from .together_adapter import TogetherAdapter, TOGETHER_MODELS
+from .openrouter_adapter import OpenRouterAdapter, OPENROUTER_MODELS
 from .gemini_adapter import GeminiAdapter, GEMINI_MODELS
 from ..config import settings
 
@@ -28,9 +28,9 @@ class ModelRegistry:
             self._adapters["groq"] = GroqAdapter(settings.groq_api_key)
             self._model_catalog["groq"] = GROQ_MODELS
 
-        if settings.together_api_key:
-            self._adapters["together"] = TogetherAdapter(settings.together_api_key)
-            self._model_catalog["together"] = TOGETHER_MODELS
+        if settings.openrouter_api_key:
+            self._adapters["openrouter"] = OpenRouterAdapter(settings.openrouter_api_key)
+            self._model_catalog["openrouter"] = OPENROUTER_MODELS
 
         if settings.google_gemini_api_key:
             self._adapters["gemini"] = GeminiAdapter(settings.google_gemini_api_key)
