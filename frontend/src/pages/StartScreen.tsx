@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TrackSelectCard from "../components/TrackSelectCard";
 import { DEMO_PROMPTS } from "../hooks/mockContent";
+import { useLiveModels } from "../hooks/useLiveModels";
 import type { RunMode } from "../types/domain";
 
 const ROUTES: Record<RunMode, string> = {
@@ -13,9 +14,29 @@ const ROUTES: Record<RunMode, string> = {
 export default function StartScreen() {
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState(DEMO_PROMPTS[0]);
+  const { data: modelsData, error: modelsError, loading: modelsLoading } = useLiveModels();
+  const [provider, setProvider] = useState("");
+  const [model, setModel] = useState("");
+
+  useEffect(() => {
+    if (modelsData && modelsData.providers.length > 0 && !provider) {
+      const first = modelsData.providers[0];
+      setProvider(first);
+      setModel(modelsData.models[first]?.[0] ?? "");
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }
+  }, [modelsData]);
+
+  const canRunReal = Boolean(provider && model && !modelsError);
 
   function go(mode: RunMode) {
-    navigate(ROUTES[mode], { state: { prompt: prompt.trim() || DEMO_PROMPTS[0] } });
+    const cleanPrompt = prompt.trim() || DEMO_PROMPTS[0];
+    if (mode === "cross_model") {
+      navigate(ROUTES[mode], { state: { prompt: cleanPrompt } });
+      return;
+    }
+    if (!canRunReal) return;
+    navigate(ROUTES[mode], { state: { prompt: cleanPrompt, provider, model } });
   }
 
   return (
@@ -29,7 +50,7 @@ export default function StartScreen() {
         </p>
       </header>
 
-      <div className="mx-auto mb-10 max-w-2xl rounded-md border-2 border-chrome-border bg-chrome p-4">
+      <div className="mx-auto mb-6 max-w-2xl rounded-md border-2 border-chrome-border bg-chrome p-4">
         <label className="mb-2 block text-xs uppercase tracking-wide text-hud-text-dim">Your prompt</label>
         <textarea
           value={prompt}
@@ -50,6 +71,52 @@ export default function StartScreen() {
         </div>
       </div>
 
+      <div className="mx-auto mb-10 max-w-2xl rounded-md border-2 border-chrome-border bg-chrome p-4">
+        <label className="mb-2 block text-xs uppercase tracking-wide text-hud-text-dim">
+          Model — for Self-Refine / Prompt Opt (real API calls)
+        </label>
+        {modelsLoading && <p className="text-sm text-hud-text-dim">Connecting to backend…</p>}
+        {modelsError && (
+          <p className="text-sm text-hud-pink">
+            Backend unreachable at localhost:8000 — is it running? Self-Refine and Prompt Opt need it; Cross-Model
+            still works (simulated).
+          </p>
+        )}
+        {modelsData && modelsData.providers.length === 0 && (
+          <p className="text-sm text-hud-pink">Backend has no provider API keys configured.</p>
+        )}
+        {modelsData && modelsData.providers.length > 0 && (
+          <div className="grid grid-cols-2 gap-3">
+            <select
+              value={provider}
+              onChange={(e) => {
+                const p = e.target.value;
+                setProvider(p);
+                setModel(modelsData.models[p]?.[0] ?? "");
+              }}
+              className="rounded-sm border-2 border-chrome-border bg-chrome-dark p-2 font-mono text-sm text-hud-text outline-none focus:border-hud-green"
+            >
+              {modelsData.providers.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="rounded-sm border-2 border-chrome-border bg-chrome-dark p-2 font-mono text-sm text-hud-text outline-none focus:border-hud-green"
+            >
+              {(modelsData.models[provider] ?? []).map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
         <TrackSelectCard
           title="SELF-REFINE"
@@ -60,7 +127,7 @@ export default function StartScreen() {
         />
         <TrackSelectCard
           title="CROSS-MODEL"
-          description="Several models race the same prompt side by side. Best score wins."
+          description="Several models race the same prompt side by side. Best score wins. (Simulated demo.)"
           accent="var(--color-hud-cyan)"
           icon={<FlagIcon />}
           onSelect={() => go("cross_model")}
@@ -78,7 +145,7 @@ export default function StartScreen() {
         className="mt-10 text-center text-[11px] text-hud-text-dim"
         style={{ textShadow: "0 0 6px var(--color-chrome-dark), 0 0 6px var(--color-chrome-dark)" }}
       >
-        Simulated demo — token streams and scores are mocked, no live model calls.
+        Self-Refine and Prompt Opt call real models through your backend. Cross-Model is a simulated demo.
       </p>
     </div>
   );

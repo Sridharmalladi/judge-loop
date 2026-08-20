@@ -3,23 +3,34 @@ import { useLocation, useNavigate } from "react-router-dom";
 import HudBar from "../components/HudBar";
 import StepCard from "../components/StepCard";
 import ProgressTrack from "../components/ProgressTrack";
-import { usePipelineRun } from "../hooks/usePipelineRun";
-import { ARENA_MODELS } from "../hooks/mockContent";
+import { useRealPipelineRun } from "../hooks/useRealPipelineRun";
+
+interface RunState {
+  prompt?: string;
+  provider?: string;
+  model?: string;
+}
 
 export default function PipelineRunPage({ variant }: { variant: "self_refine" | "prompt_optimization" }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const prompt = (location.state as { prompt?: string } | null)?.prompt;
+  const { prompt, provider, model } = (location.state as RunState | null) ?? {};
 
   useEffect(() => {
-    if (!prompt) navigate("/");
-  }, [prompt, navigate]);
+    if (!prompt || !provider || !model) navigate("/");
+  }, [prompt, provider, model, navigate]);
 
-  const state = usePipelineRun({ prompt: prompt ?? "", variant, maxRounds: 4 });
+  const { state, error, generatorLabel } = useRealPipelineRun({
+    prompt: prompt ?? "",
+    strategy: variant,
+    provider: provider ?? "",
+    model: model ?? "",
+    maxRounds: 4,
+  });
   const [selectedRound, setSelectedRound] = useState<number | null>(null);
   const currentScore = state.history[state.history.length - 1]?.score ?? null;
 
-  if (!prompt) return null;
+  if (!prompt || !provider || !model) return null;
 
   const selectedSnapshot = selectedRound != null ? state.history.find((h) => h.round === selectedRound) : null;
   const stepsToShow = selectedSnapshot ? selectedSnapshot.steps : state.steps;
@@ -28,7 +39,7 @@ export default function PipelineRunPage({ variant }: { variant: "self_refine" | 
     <div>
       <HudBar
         mode={variant}
-        model={ARENA_MODELS[0].name}
+        model={generatorLabel}
         round={state.round}
         maxRounds={state.maxRounds}
         elapsedMs={state.elapsedMs}
@@ -47,7 +58,20 @@ export default function PipelineRunPage({ variant }: { variant: "self_refine" | 
           />
         </div>
 
-        {state.isDone && (
+        {error && (
+          <div className="mb-6 rounded-md border-2 border-hud-pink bg-chrome p-4 text-center">
+            <p className="font-pixel text-xs text-hud-pink">✕ ERROR</p>
+            <p className="mt-2 text-sm text-hud-text-dim">{error}</p>
+            <button
+              onClick={() => navigate("/")}
+              className="mt-4 rounded-sm border-2 border-hud-pink px-4 py-2 font-pixel text-[10px] text-hud-pink hover:bg-hud-pink hover:text-chrome-dark"
+            >
+              BACK
+            </button>
+          </div>
+        )}
+
+        {state.isDone && !error && (
           <div className="mb-6 rounded-md border-2 border-hud-green bg-chrome p-4 text-center">
             <p className="font-pixel text-xs text-hud-green">✓ FINISHED</p>
             <p className="mt-2 text-sm text-hud-text-dim">
