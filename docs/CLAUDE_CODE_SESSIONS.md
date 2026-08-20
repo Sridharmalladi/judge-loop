@@ -3,7 +3,7 @@
 ## Getting started
 
 ```bash
-cd refinement-arena
+cd judge-loop
 claude
 ```
 

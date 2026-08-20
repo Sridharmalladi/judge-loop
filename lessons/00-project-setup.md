@@ -41,7 +41,7 @@ API keys (Groq, Together, Gemini) never go in code. We use `.env` files locally 
 ### Step 1: Initialize the repo
 
 ```bash
-mkdir refinement-arena && cd refinement-arena
+mkdir judge-loop && cd judge-loop
 git init
 ```
 

@@ -19,7 +19,7 @@ export default function TopBar({
         className="font-pixel text-[10px] text-hud-green"
         style={{ textShadow: "0 0 8px var(--color-hud-green)" }}
       >
-        ARENA
+        JUDGE LOOP
       </Link>
       <div className="flex items-center gap-2">
         <IconButton active={soundOn} onClick={onToggleSound} label={soundOn ? "MUSIC ON" : "MUSIC OFF"}>

@@ -1,4 +1,4 @@
-# Refinement Arena — Interactive Learning Path
+# Judge Loop — Interactive Learning Path
 
 ## What you're building
 
@@ -57,7 +57,7 @@ before we write any code, and stop me if I'm about to make a mistake.
 ## Project structure (what you'll have at the end)
 
 ```
-refinement-arena/
+judge-loop/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                 # FastAPI app entry

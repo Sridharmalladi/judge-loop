@@ -19,7 +19,7 @@ logging.basicConfig(
 )
 
 app = FastAPI(
-    title="Refinement Arena",
+    title="Judge Loop",
     description="LLM self-improvement through iterative evaluation and structured feedback",
     version="0.1.0",
 )

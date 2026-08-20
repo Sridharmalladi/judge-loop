@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     rate_limit_rpm: int = Field(default=30, description="Requests per minute per provider")
 
     # ── Storage ──
-    database_url: str = "sqlite+aiosqlite:///./refinement_arena.db"
+    database_url: str = "sqlite+aiosqlite:///./judge_loop.db"
 
     # ── Server ──
     host: str = "0.0.0.0"
