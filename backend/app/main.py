@@ -27,7 +27,7 @@ app = FastAPI(
 # CORS — let the React dev server talk to us
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=settings.get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -37,7 +37,7 @@ app.add_middleware(
 app.include_router(router)
 
 # WebSocket endpoint
-app.add_websocket_route("/ws/refine", websocket_refine)
+app.add_api_websocket_route("/ws/refine", websocket_refine)
 
 
 @app.get("/health")

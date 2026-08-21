@@ -32,8 +32,17 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+    # Set to the deployed frontend's origin (e.g. https://your-site.netlify.app)
+    # via env var — kept separate from cors_origins so the dev defaults above
+    # don't need editing for a prod deploy.
+    frontend_url: Optional[str] = None
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+
+    def get_cors_origins(self) -> list[str]:
+        if self.frontend_url and self.frontend_url not in self.cors_origins:
+            return [*self.cors_origins, self.frontend_url]
+        return self.cors_origins
 
     def get_available_providers(self) -> list[str]:
         """Returns which providers have API keys configured."""
