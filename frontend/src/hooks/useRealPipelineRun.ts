@@ -259,7 +259,7 @@ export function useRealPipelineRun({
       } catch {
         settle(() => {
           setError("Received a malformed message from the server");
-          setState((s) => ({ ...s, isRunning: false }));
+          setState((s) => ({ ...s, isRunning: false, isDone: true }));
         });
         return;
       }
@@ -284,7 +284,7 @@ export function useRealPipelineRun({
       } else if (msg.type === "error") {
         settle(() => {
           setError(msg.error);
-          setState((s) => withLog({ ...s, isRunning: false }, `Error: ${msg.error}`, "bad"));
+          setState((s) => withLog({ ...s, isRunning: false, isDone: true }, `Error: ${msg.error}`, "bad"));
         });
       }
     };
@@ -292,7 +292,7 @@ export function useRealPipelineRun({
     ws.onerror = () => {
       settle(() => {
         setError("WebSocket connection failed");
-        setState((s) => withLog({ ...s, isRunning: false }, "WebSocket connection failed", "bad"));
+        setState((s) => withLog({ ...s, isRunning: false, isDone: true }, "WebSocket connection failed", "bad"));
       });
     };
 
@@ -303,7 +303,7 @@ export function useRealPipelineRun({
       // short of navigating away manually.
       settle(() => {
         setError("Connection closed unexpectedly");
-        setState((s) => withLog({ ...s, isRunning: false }, "Connection closed unexpectedly", "bad"));
+        setState((s) => withLog({ ...s, isRunning: false, isDone: true }, "Connection closed unexpectedly", "bad"));
       });
     };
 

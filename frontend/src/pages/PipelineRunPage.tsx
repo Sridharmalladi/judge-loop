@@ -53,8 +53,12 @@ export default function PipelineRunPage({ variant }: { variant: Variant }) {
 
   const selectedSnapshot = selectedRound != null ? state.history.find((h) => h.round === selectedRound) : null;
   const stepsToShow = selectedSnapshot ? selectedSnapshot.steps : state.steps;
-  const generator = stepsToCharacterState(state.steps, state.isDone, !!error);
-  const judge = stepsToJudgeState(state.steps, state.isDone, !!error, currentScore);
+  // A hard "sad" reaction is only warranted when the run produced nothing —
+  // an error after some rounds already scored is a stopped-early success,
+  // not a failure, and the character/banner below both reflect that.
+  const hardError = !!error && state.history.length === 0;
+  const generator = stepsToCharacterState(state.steps, state.isDone, hardError);
+  const judge = stepsToJudgeState(state.steps, state.isDone, hardError, currentScore);
 
   return (
     <div>
@@ -102,7 +106,7 @@ export default function PipelineRunPage({ variant }: { variant: Variant }) {
           />
         </div>
 
-        {error && (
+        {error && state.history.length === 0 && (
           <div className="mb-6 rounded-md border-2 border-hud-pink bg-chrome p-4 text-center">
             <p className="font-pixel text-xs text-hud-pink">✕ ERROR</p>
             <p className="mt-2 text-sm text-hud-text-dim">{error}</p>
@@ -115,23 +119,33 @@ export default function PipelineRunPage({ variant }: { variant: Variant }) {
           </div>
         )}
 
-        {state.isDone && !error && (
-          <div className="mb-6 rounded-md border-2 border-hud-green bg-chrome p-4 text-center">
-            <p className="font-pixel text-xs text-hud-green">✓ FINISHED</p>
+        {state.isDone && state.history.length > 0 && (
+          <div
+            className="mb-6 rounded-md border-2 bg-chrome p-4 text-center"
+            style={{ borderColor: error ? "var(--color-hud-amber)" : "var(--color-hud-green)" }}
+          >
+            <p className="font-pixel text-xs" style={{ color: error ? "var(--color-hud-amber)" : "var(--color-hud-green)" }}>
+              {error ? "⚠ STOPPED EARLY" : "✓ FINISHED"}
+            </p>
             <p className="mt-2 text-sm text-hud-text-dim">
               Score: {state.history[0]?.score} → {state.history[state.history.length - 1]?.score} over{" "}
-              {state.history.length} rounds
+              {state.history.length} round{state.history.length === 1 ? "" : "s"}
             </p>
+            {error && <p className="mt-1 text-xs text-hud-pink">{error}</p>}
             <button
               onClick={() => navigate("/")}
-              className="mt-4 rounded-sm border-2 border-hud-green px-4 py-2 font-pixel text-[10px] text-hud-green hover:bg-hud-green hover:text-chrome-dark"
+              className={
+                error
+                  ? "mt-4 rounded-sm border-2 border-hud-amber px-4 py-2 font-pixel text-[10px] text-hud-amber hover:bg-hud-amber hover:text-chrome-dark"
+                  : "mt-4 rounded-sm border-2 border-hud-green px-4 py-2 font-pixel text-[10px] text-hud-green hover:bg-hud-green hover:text-chrome-dark"
+              }
             >
               NEW RUN
             </button>
           </div>
         )}
 
-        {state.isDone && !error && state.history.length > 1 && (
+        {state.isDone && state.history.length > 1 && (
           <div className="mb-6">
             <Leaderboard history={state.history} />
           </div>
