@@ -53,6 +53,10 @@ export default function PipelineRunPage({ variant }: { variant: Variant }) {
 
   const selectedSnapshot = selectedRound != null ? state.history.find((h) => h.round === selectedRound) : null;
   const stepsToShow = selectedSnapshot ? selectedSnapshot.steps : state.steps;
+  const bestRound = state.history.reduce<(typeof state.history)[number] | null>(
+    (best, h) => (h.score > (best?.score ?? -1) ? h : best),
+    null,
+  );
   // A hard "sad" reaction is only warranted when the run produced nothing —
   // an error after some rounds already scored is a stopped-early success,
   // not a failure, and the character/banner below both reflect that.
@@ -128,9 +132,16 @@ export default function PipelineRunPage({ variant }: { variant: Variant }) {
               {error ? "⚠ STOPPED EARLY" : "✓ FINISHED"}
             </p>
             <p className="mt-2 text-sm text-hud-text-dim">
-              Score: {state.history[0]?.score} → {state.history[state.history.length - 1]?.score} over{" "}
-              {state.history.length} round{state.history.length === 1 ? "" : "s"}
+              Score: {state.history.map((h) => h.score).join(" → ")} over {state.history.length} round
+              {state.history.length === 1 ? "" : "s"}
             </p>
+            {bestRound && bestRound.round !== state.history[state.history.length - 1].round && (
+              <p className="mt-1 text-xs text-hud-amber">
+                Best was round {bestRound.round} at {bestRound.score}/100 — later rounds didn't beat it. The judge
+                isn't perfectly consistent round to round, so "latest" isn't always "best"; check ROUND RANKING
+                below.
+              </p>
+            )}
             {error && <p className="mt-1 text-xs text-hud-pink">{error}</p>}
             <button
               onClick={() => navigate("/")}
