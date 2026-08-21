@@ -11,6 +11,7 @@ from .base import ModelAdapter, AdapterError
 from .groq_adapter import GroqAdapter, GROQ_MODELS
 from .openrouter_adapter import OpenRouterAdapter, OPENROUTER_MODELS
 from .gemini_adapter import GeminiAdapter, GEMINI_MODELS
+from .ollama_adapter import OllamaAdapter, OLLAMA_MODELS
 from ..config import settings
 
 
@@ -35,6 +36,10 @@ class ModelRegistry:
         if settings.google_gemini_api_key:
             self._adapters["gemini"] = GeminiAdapter(settings.google_gemini_api_key)
             self._model_catalog["gemini"] = GEMINI_MODELS
+
+        if settings.ollama_enabled:
+            self._adapters["ollama"] = OllamaAdapter(settings.ollama_base_url)
+            self._model_catalog["ollama"] = OLLAMA_MODELS  # refreshed live in routes.list_models
 
     def get_adapter(self, provider: str) -> ModelAdapter:
         """Get the adapter for a provider. Raises if not configured."""

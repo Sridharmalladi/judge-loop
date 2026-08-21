@@ -14,6 +14,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <ParallaxBackground />
+      <div className="scanline-overlay" aria-hidden="true" />
       <div className="relative z-10 min-h-screen">
         <TopBar soundOn={soundOn} onToggleSound={toggleSound} theme={theme} onToggleTheme={toggleTheme} />
         <Routes>

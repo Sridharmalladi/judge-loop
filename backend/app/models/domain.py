@@ -26,6 +26,7 @@ class ModelProvider(str, Enum):
     OPENROUTER = "openrouter"
     GEMINI = "gemini"
     HUGGINGFACE = "huggingface"
+    OLLAMA = "ollama"
 
 
 class RunStatus(str, Enum):
@@ -66,6 +67,7 @@ class EvaluationResult(BaseModel):
     strengths: list[str] = []
     weaknesses: list[str] = []
     suggestions: list[str] = []
+    dimension_scores: dict[str, float] = {}  # per-axis 0-10, for the radar chart
     raw_judge_response: str = ""  # Full judge output for debugging
 
 

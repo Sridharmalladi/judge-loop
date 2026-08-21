@@ -18,6 +18,10 @@ export default function ArenaPage() {
 
   if (!prompt) return null;
 
+  const winnerId = state.isDone
+    ? state.lanes.reduce((best, l) => ((l.score ?? -1) > (best?.score ?? -1) ? l : best), state.lanes[0])?.id
+    : null;
+
   return (
     <div>
       <HudBar
@@ -35,7 +39,7 @@ export default function ArenaPage() {
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {state.lanes.map((lane) => (
-            <ArenaLane key={lane.id} lane={lane} />
+            <ArenaLane key={lane.id} lane={lane} isWinner={lane.id === winnerId} />
           ))}
         </div>
 

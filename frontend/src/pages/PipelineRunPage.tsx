@@ -30,6 +30,10 @@ export default function PipelineRunPage({ variant }: { variant: "self_refine" | 
   const [selectedRound, setSelectedRound] = useState<number | null>(null);
   const currentScore = state.history[state.history.length - 1]?.score ?? null;
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [state.round]);
+
   if (!prompt || !provider || !model) return null;
 
   const selectedSnapshot = selectedRound != null ? state.history.find((h) => h.round === selectedRound) : null;

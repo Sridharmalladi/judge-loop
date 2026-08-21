@@ -24,9 +24,15 @@ router = APIRouter(prefix="/api", tags=["refinement"])
 @router.get("/models", response_model=AvailableModelsResponse)
 async def list_models():
     """What models can the user pick from?"""
+    models = registry.get_available_models()
+    if "ollama" in models:
+        # Static providers ship a fixed catalog — Ollama's is whatever the
+        # user has pulled locally, so refresh it live instead of trusting
+        # the placeholder set at registry init.
+        models["ollama"] = await registry.get_adapter("ollama").list_models()
     return AvailableModelsResponse(
         providers=registry.get_available_providers(),
-        models=registry.get_available_models(),
+        models=models,
     )
 
 
@@ -129,6 +135,7 @@ def _run_to_detail(run: RefinementRun) -> RunDetail:
             strengths=it.evaluation.strengths,
             weaknesses=it.evaluation.weaknesses,
             suggestions=it.evaluation.suggestions,
+            dimension_scores=it.evaluation.dimension_scores,
             improvement_delta=delta,
             latency_ms=it.latency_ms,
             model_used=it.model_used,

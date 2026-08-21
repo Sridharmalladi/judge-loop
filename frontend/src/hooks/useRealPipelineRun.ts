@@ -1,13 +1,29 @@
 import { useEffect, useState } from "react";
 import { WS_URL } from "../lib/api";
-import type { PipelineRunState, StepKind, StepState } from "../types/domain";
+import type { PipelineRunState, ScoreDimension, StepKind, StepState } from "../types/domain";
 
 // Real backend delivers one complete result per round (not staged
-// prompt->generation->evaluation->critique->refinement events), and no
-// per-dimension score breakdown — so real mode has 4 stages, not 5, and a
-// single score (scaled x10 to match the mock's /100 convention) instead of
-// a radar chart. See usePipelineRun.ts for the mock/demo equivalent.
+// prompt->generation->evaluation->critique->refinement events) — so real
+// mode has 4 stages, not 5. The judge does return a per-dimension score
+// breakdown though, which drives the evaluation step's radar chart.
+// See usePipelineRun.ts for the mock/demo equivalent.
 const STEP_ORDER: StepKind[] = ["prompt", "generation", "evaluation", "critique"];
+
+const DIMENSION_LABELS: Record<string, string> = {
+  relevance: "Relevance",
+  coherence: "Coherence",
+  completeness: "Completeness",
+  conciseness: "Conciseness",
+  accuracy: "Accuracy",
+  creativity: "Creativity",
+};
+
+function toScoreDimensions(dimensionScores: Record<string, number>): ScoreDimension[] {
+  return Object.entries(dimensionScores).map(([key, value]) => ({
+    label: DIMENSION_LABELS[key] ?? key,
+    value: Math.round(value * 10),
+  }));
+}
 
 function emptySteps(): StepState[] {
   return STEP_ORDER.map((kind) => ({ kind, status: "locked", content: "" }));
@@ -30,6 +46,7 @@ interface RealIterationEvent {
   strengths: string[];
   weaknesses: string[];
   suggestions: string[];
+  dimension_scores: Record<string, number>;
   improvement_delta: number | null;
   latency_ms: number;
   model_used: string;
@@ -134,7 +151,8 @@ export function useRealPipelineRun({ prompt, strategy, provider, model, maxRound
       await sleep(400, cancelled);
       if (cancelled()) return;
       const scaled = Math.round(ev.score * 10);
-      updateStep("evaluation", { status: "complete", content: `Overall: ${scaled}/100` });
+      const dims = toScoreDimensions(ev.dimension_scores ?? {});
+      updateStep("evaluation", { status: "complete", content: `Overall: ${scaled}/100`, scores: dims });
       await sleep(200, cancelled);
 
       // 4. CRITIQUE — real judge critique/strengths/weaknesses/suggestions
@@ -153,7 +171,7 @@ export function useRealPipelineRun({ prompt, strategy, provider, model, maxRound
       const roundSteps: StepState[] = [
         { kind: "prompt", status: "complete", content: prompt },
         { kind: "generation", status: "complete", content: ev.response || "(empty response)" },
-        { kind: "evaluation", status: "complete", content: `Overall: ${scaled}/100` },
+        { kind: "evaluation", status: "complete", content: `Overall: ${scaled}/100`, scores: dims },
         { kind: "critique", status: "complete", content: critiqueText },
       ];
       setState((s) => ({ ...s, history: [...s.history, { round, score: scaled, steps: roundSteps }] }));

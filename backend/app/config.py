@@ -16,6 +16,13 @@ class Settings(BaseSettings):
     google_gemini_api_key: Optional[str] = None
     huggingface_api_key: Optional[str] = None
 
+    # ── Local models (Ollama) ──
+    # Off by default — a deployed backend (e.g. Render) can't reach a
+    # laptop's localhost, so this only makes sense when the backend itself
+    # runs on the same machine as `ollama serve`.
+    ollama_enabled: bool = False
+    ollama_base_url: str = "http://localhost:11434"
+
     # ── Engine defaults ──
     max_iterations: int = Field(default=5, ge=1, le=15)
     convergence_threshold: float = Field(default=0.5, ge=0.0, le=5.0)
@@ -55,6 +62,8 @@ class Settings(BaseSettings):
             available.append("gemini")
         if self.huggingface_api_key:
             available.append("huggingface")
+        if self.ollama_enabled:
+            available.append("ollama")
         return available
 
 

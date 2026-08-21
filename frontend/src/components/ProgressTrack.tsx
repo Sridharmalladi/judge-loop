@@ -15,6 +15,9 @@ export default function ProgressTrack({
 }) {
   const rounds = Array.from({ length: maxRounds }, (_, i) => i + 1);
   const clickable = history.length > 0;
+  const latestRound = history.length > 0 ? history[history.length - 1] : null;
+  const isLatestNewBest =
+    latestRound != null && history.every((h) => h.round === latestRound.round || h.score <= latestRound.score);
 
   return (
     <div className="rounded-md border-2 border-chrome-border bg-chrome p-4">
@@ -24,6 +27,7 @@ export default function ProgressTrack({
           const done = !!entry;
           const isCurrent = r === round && !done;
           const isSelected = selectedRound === r;
+          const isNewBest = done && isLatestNewBest && r === latestRound!.round;
 
           const borderColor = isSelected
             ? "var(--color-hud-amber)"
@@ -47,15 +51,19 @@ export default function ProgressTrack({
               disabled={!done}
               onClick={() => onSelectRound(isSelected ? null : r)}
               title={done ? `View round ${r}` : undefined}
-              className="flex flex-col items-center justify-center gap-1 rounded-sm border-2 py-3 transition-all disabled:cursor-default"
+              className={`flex flex-col items-center justify-center gap-1 rounded-sm border-2 py-3 transition-all disabled:cursor-default ${
+                isNewBest && !isSelected ? "animate-pulse-glow" : ""
+              }`}
               style={{
                 borderColor,
+                color: isNewBest ? "var(--color-hud-green)" : undefined,
                 background: isSelected ? "var(--color-chrome-raised)" : "var(--color-chrome-dark)",
                 boxShadow: isSelected ? "0 0 12px var(--color-hud-amber)" : isCurrent ? "0 0 8px var(--color-hud-amber)" : "none",
               }}
             >
               <span className="font-pixel text-[10px]" style={{ color: textColor }}>
                 R{r}
+                {isNewBest && !isSelected ? " ★" : ""}
               </span>
               <span className="font-mono text-xs" style={{ color: textColor }}>
                 {done ? entry!.score : isCurrent ? "···" : "—"}

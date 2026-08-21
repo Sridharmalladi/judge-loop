@@ -14,8 +14,10 @@ const CHORDS: { root: number; notes: [number, number, number]; arp: (number | nu
   { root: 98.0, notes: [196.0, 246.94, 293.66], arp: [246.94, null, 329.63, 196.0, null, 392.0] }, // G
 ];
 
-const CHORD_SEC = 6;
-const FADE_SEC = 2.2;
+// 10% faster than the original 6s/chord tempo.
+const TEMPO_SCALE = 1 / 1.1;
+const CHORD_SEC = 6 * TEMPO_SCALE;
+const FADE_SEC = 2.2 * TEMPO_SCALE;
 const ARP_STEP_SEC = CHORD_SEC / CHORDS[0].arp.length;
 
 interface Voice {
@@ -36,7 +38,7 @@ export function useAmbientMelody() {
     if (bedRef.current) return;
 
     const master = ctx.createGain();
-    master.gain.value = 0.08;
+    master.gain.value = 0.1; // ~25% louder than the original 0.08
     master.connect(ctx.destination);
 
     // soft, rounded tone — rolls off the buzzy upper harmonics

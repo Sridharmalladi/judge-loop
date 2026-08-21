@@ -129,6 +129,7 @@ async def run_refinement(
                     strengths=evaluation.strengths,
                     weaknesses=evaluation.weaknesses,
                     suggestions=evaluation.suggestions,
+                    dimension_scores=evaluation.dimension_scores,
                     improvement_delta=improvement_delta,
                     latency_ms=gen_result["latency_ms"],
                     model_used=gen_result["model"],

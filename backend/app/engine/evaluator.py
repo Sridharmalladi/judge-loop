@@ -33,13 +33,30 @@ Scoring guide:
 - 7-8: Good, covers the topic well with minor issues
 - 9-10: Excellent, comprehensive, could not meaningfully improve
 
+Also score the response 0-10 on each of these six dimensions individually,
+independent of the weights above:
+- relevance: does it answer what was asked?
+- coherence: is it logically structured and easy to follow?
+- completeness: does it cover the topic thoroughly?
+- conciseness: does it avoid padding and stay on point?
+- accuracy: is the information correct?
+- creativity: does it show original insight, not just boilerplate?
+
 Respond with exactly this JSON structure:
 {{
     "score": <float 0-10>,
     "critique": "<2-3 sentence overall assessment>",
     "strengths": ["<specific strength 1>", "<specific strength 2>"],
     "weaknesses": ["<specific weakness 1>", "<specific weakness 2>"],
-    "suggestions": ["<actionable improvement 1>", "<actionable improvement 2>"]
+    "suggestions": ["<actionable improvement 1>", "<actionable improvement 2>"],
+    "dimension_scores": {{
+        "relevance": <float 0-10>,
+        "coherence": <float 0-10>,
+        "completeness": <float 0-10>,
+        "conciseness": <float 0-10>,
+        "accuracy": <float 0-10>,
+        "creativity": <float 0-10>
+    }}
 }}"""
 
 
@@ -75,6 +92,21 @@ def _clamp_score(value) -> float:
     return max(0.0, min(10.0, float(value)))
 
 
+def _clamp_dimension_scores(raw_dims) -> dict[str, float]:
+    """Same unreliable-judge-output problem as the overall score, per axis —
+    drop any dimension that isn't a plain number instead of failing the
+    whole evaluation over one bad field."""
+    if not isinstance(raw_dims, dict):
+        return {}
+    dims = {}
+    for key, value in raw_dims.items():
+        try:
+            dims[key] = _clamp_score(value)
+        except (TypeError, ValueError):
+            continue
+    return dims
+
+
 def _result_from(data: dict, raw: str) -> EvaluationResult:
     return EvaluationResult(
         score=_clamp_score(data["score"]),
@@ -82,6 +114,7 @@ def _result_from(data: dict, raw: str) -> EvaluationResult:
         strengths=data.get("strengths", []),
         weaknesses=data.get("weaknesses", []),
         suggestions=data.get("suggestions", []),
+        dimension_scores=_clamp_dimension_scores(data.get("dimension_scores")),
         raw_judge_response=raw,
     )
 

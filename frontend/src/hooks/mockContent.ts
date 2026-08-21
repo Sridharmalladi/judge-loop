@@ -78,6 +78,6 @@ export const DEMO_PROMPTS = [
 
 export const ARENA_MODELS = [
   { id: "m1", name: "llama-3.1-70b", colorVar: "var(--color-hud-green)" },
-  { id: "m2", name: "gemini-1.5-pro", colorVar: "var(--color-hud-cyan)" },
+  { id: "m2", name: "gemini-3.6-flash", colorVar: "var(--color-hud-cyan)" },
   { id: "m3", name: "mixtral-8x7b", colorVar: "var(--color-hud-pink)" },
 ];

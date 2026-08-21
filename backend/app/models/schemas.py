@@ -53,6 +53,7 @@ class IterationEvent(BaseModel):
     strengths: list[str]
     weaknesses: list[str]
     suggestions: list[str]
+    dimension_scores: dict[str, float] = {}
     improvement_delta: Optional[float] = None
     latency_ms: float
     model_used: str

@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="30" height="32" viewBox="0 0 30 32" shape-rendering="crispEdges">
+  <!-- pointing finger -->
+  <rect x="6" y="0" width="8" height="2" fill="#0b0c12"/>
+  <rect x="6" y="2" width="2" height="8" fill="#0b0c12"/>
+  <rect x="8" y="2" width="4" height="8" fill="#f4f4f4"/>
+  <rect x="12" y="2" width="2" height="8" fill="#0b0c12"/>
+
+  <!-- hand widening -->
+  <rect x="4" y="10" width="2" height="2" fill="#0b0c12"/>
+  <rect x="6" y="10" width="8" height="2" fill="#f4f4f4"/>
+  <rect x="14" y="10" width="2" height="2" fill="#0b0c12"/>
+
+  <rect x="4" y="12" width="2" height="2" fill="#0b0c12"/>
+  <rect x="6" y="12" width="8" height="2" fill="#f4f4f4"/>
+  <rect x="14" y="12" width="2" height="2" fill="#0b0c12"/>
+  <rect x="20" y="12" width="4" height="2" fill="#0b0c12"/>
+
+  <!-- thumb + fist -->
+  <rect x="2" y="14" width="2" height="2" fill="#0b0c12"/>
+  <rect x="4" y="14" width="14" height="2" fill="#f4f4f4"/>
+  <rect x="18" y="14" width="2" height="2" fill="#0b0c12"/>
+  <rect x="20" y="14" width="4" height="2" fill="#f4f4f4"/>
+  <rect x="24" y="14" width="2" height="2" fill="#0b0c12"/>
+
+  <rect x="0" y="16" width="2" height="2" fill="#0b0c12"/>
+  <rect x="2" y="16" width="24" height="2" fill="#f4f4f4"/>
+  <rect x="26" y="16" width="2" height="2" fill="#0b0c12"/>
+
+  <rect x="0" y="18" width="2" height="2" fill="#0b0c12"/>
+  <rect x="2" y="18" width="24" height="2" fill="#f4f4f4"/>
+  <rect x="26" y="18" width="2" height="2" fill="#0b0c12"/>
+
+  <rect x="0" y="20" width="2" height="2" fill="#0b0c12"/>
+  <rect x="2" y="20" width="24" height="2" fill="#f4f4f4"/>
+  <rect x="26" y="20" width="2" height="2" fill="#0b0c12"/>
+
+  <rect x="0" y="22" width="2" height="2" fill="#0b0c12"/>
+  <rect x="2" y="22" width="24" height="2" fill="#f4f4f4"/>
+  <rect x="26" y="22" width="2" height="2" fill="#0b0c12"/>
+
+  <!-- taper into cuff -->
+  <rect x="2" y="24" width="2" height="2" fill="#0b0c12"/>
+  <rect x="4" y="24" width="20" height="2" fill="#f4f4f4"/>
+  <rect x="24" y="24" width="2" height="2" fill="#0b0c12"/>
+
+  <!-- neon cuff, theme accent -->
+  <rect x="4" y="26" width="2" height="2" fill="#0b0c12"/>
+  <rect x="6" y="26" width="14" height="2" fill="#39ff88"/>
+  <rect x="20" y="26" width="2" height="2" fill="#0b0c12"/>
+
+  <rect x="4" y="28" width="2" height="2" fill="#0b0c12"/>
+  <rect x="6" y="28" width="14" height="2" fill="#39ff88"/>
+  <rect x="20" y="28" width="2" height="2" fill="#0b0c12"/>
+
+  <rect x="6" y="30" width="14" height="2" fill="#0b0c12"/>
+</svg>

@@ -1,3 +1,5 @@
+import { useCountUp } from "../hooks/useCountUp";
+
 function formatElapsed(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
   const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
@@ -41,11 +43,16 @@ export default function HudBar({
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
           <HudStat label="ELAPSED" value={formatElapsed(elapsedMs)} color="var(--color-hud-text)" />
           <HudStat label="TOKENS" value={tokenCount.toLocaleString()} color="var(--color-hud-text)" />
-          {score != null && <HudStat label="SCORE" value={String(score)} color="var(--color-hud-green)" />}
+          {score != null && <ScoreStat score={score} />}
         </div>
       </div>
     </div>
   );
+}
+
+function ScoreStat({ score }: { score: number }) {
+  const displayScore = useCountUp(score);
+  return <HudStat label="SCORE" value={String(displayScore)} color="var(--color-hud-green)" />;
 }
 
 function HudStat({ label, value, color }: { label: string; value: string; color: string }) {

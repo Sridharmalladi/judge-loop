@@ -122,6 +122,15 @@ html, body {
   background: var(--color-chrome-dark);
   color: var(--color-hud-text);
   font-family: var(--font-mono);
+  cursor: url("/cursor-glove.svg") 7 1, auto;
+}
+
+button,
+a,
+[role="button"],
+input[type="button"],
+input[type="submit"] {
+  cursor: url("/cursor-glove.svg") 7 1, pointer;
 }
 
 #root {
@@ -135,6 +144,31 @@ html, body {
 
 .font-pixel {
   font-family: var(--font-pixel);
+}
+
+/* subtle CRT scanlines — fixed overlay, doesn't affect layout or scroll */
+.scanline-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.08) 0px,
+    rgba(0, 0, 0, 0.08) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: overlay;
+  opacity: 0.5;
+}
+
+[data-theme="light"] .scanline-overlay {
+  opacity: 0.25;
+}
+
+.glow-win {
+  box-shadow: 0 0 18px 3px currentColor;
 }
 
 @media (prefers-reduced-motion: reduce) {

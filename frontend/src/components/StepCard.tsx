@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { StepState } from "../types/domain";
 import { STEP_LABELS, STEP_SUBTITLES } from "../types/domain";
 import ScoreRadar from "./ScoreRadar";
+import ExpandableText from "./ExpandableText";
 
 const STATUS_COLOR: Record<StepState["status"], string> = {
   locked: "var(--color-hud-text-dim)",
@@ -53,12 +54,15 @@ export default function StepCard({ step }: { step: StepState }) {
             className="mt-3"
           >
             {step.kind === "evaluation" && step.scores ? (
-              <ScoreRadar dims={step.scores} />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+              >
+                <ScoreRadar dims={step.scores} />
+              </motion.div>
             ) : (
-              <p className="whitespace-pre-wrap font-mono text-sm leading-relaxed text-hud-text">
-                {step.content}
-                {step.status === "active" && <BlinkCursor />}
-              </p>
+              <ExpandableText text={step.content} cursor={step.status === "active"} />
             )}
           </motion.div>
         )}
@@ -89,8 +93,4 @@ function LockIcon({ small }: { small?: boolean }) {
       <path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" strokeWidth="1.5" opacity="0.6" />
     </svg>
   );
-}
-
-function BlinkCursor() {
-  return <span className="animate-blink text-hud-green">▌</span>;
 }
