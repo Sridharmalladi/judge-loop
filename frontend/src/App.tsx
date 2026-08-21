@@ -3,7 +3,6 @@ import ParallaxBackground from "./components/ParallaxBackground";
 import TopBar from "./components/TopBar";
 import StartScreen from "./pages/StartScreen";
 import PipelineRunPage from "./pages/PipelineRunPage";
-import ArenaPage from "./pages/ArenaPage";
 import { useTheme } from "./hooks/useTheme";
 import { useAmbientMelody } from "./hooks/useAmbientMelody";
 
@@ -21,7 +20,7 @@ export default function App() {
           <Route path="/" element={<StartScreen />} />
           <Route path="/run/self-refine" element={<PipelineRunPage variant="self_refine" />} />
           <Route path="/run/prompt-opt" element={<PipelineRunPage variant="prompt_optimization" />} />
-          <Route path="/run/arena" element={<ArenaPage />} />
+          <Route path="/run/arena" element={<PipelineRunPage variant="cross_model" />} />
         </Routes>
       </div>
     </BrowserRouter>

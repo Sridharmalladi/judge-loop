@@ -17,22 +17,32 @@ export default function StartScreen() {
   const { data: modelsData, error: modelsError, loading: modelsLoading } = useLiveModels();
   const [provider, setProvider] = useState("");
   const [model, setModel] = useState("");
+  const [evaluatorProvider, setEvaluatorProvider] = useState("");
+  const [evaluatorModel, setEvaluatorModel] = useState("");
 
   useEffect(() => {
     if (modelsData && modelsData.providers.length > 0 && !provider) {
       const first = modelsData.providers[0];
       setProvider(first);
       setModel(modelsData.models[first]?.[0] ?? "");
+      // Default the judge to a different provider when one's available, so
+      // "cross-model" means something out of the box instead of a model
+      // judging its own twin.
+      const judgeProvider = modelsData.providers[1] ?? first;
+      setEvaluatorProvider(judgeProvider);
+      setEvaluatorModel(modelsData.models[judgeProvider]?.[0] ?? "");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelsData]);
 
   const canRunReal = Boolean(provider && model && !modelsError);
+  const canRunArena = Boolean(canRunReal && evaluatorProvider && evaluatorModel);
 
   function go(mode: RunMode) {
     const cleanPrompt = prompt.trim() || DEMO_PROMPTS[0];
     if (mode === "cross_model") {
-      navigate(ROUTES[mode], { state: { prompt: cleanPrompt } });
+      if (!canRunArena) return;
+      navigate(ROUTES[mode], { state: { prompt: cleanPrompt, provider, model, evaluatorProvider, evaluatorModel } });
       return;
     }
     if (!canRunReal) return;
@@ -71,15 +81,14 @@ export default function StartScreen() {
         </div>
       </div>
 
-      <div className="mx-auto mb-10 max-w-2xl rounded-md border-2 border-chrome-border bg-chrome p-4">
+      <div className="mx-auto mb-6 max-w-2xl rounded-md border-2 border-chrome-border bg-chrome p-4">
         <label className="mb-2 block text-xs uppercase tracking-wide text-hud-text-dim">
-          Model — for Self-Refine / Prompt Opt (real API calls)
+          Model — generator (Self-Refine / Prompt Opt / Cross-Model)
         </label>
         {modelsLoading && <p className="text-sm text-hud-text-dim">Connecting to backend…</p>}
         {modelsError && (
           <p className="text-sm text-hud-pink">
-            Backend unreachable at localhost:8000 — is it running? Self-Refine and Prompt Opt need it; Cross-Model
-            still works (simulated).
+            Backend unreachable at localhost:8000 — is it running? All three tracks call it for real.
           </p>
         )}
         {modelsData && modelsData.providers.length === 0 && (
@@ -117,6 +126,42 @@ export default function StartScreen() {
         )}
       </div>
 
+      {modelsData && modelsData.providers.length > 0 && (
+        <div className="mx-auto mb-10 max-w-2xl rounded-md border-2 border-chrome-border bg-chrome p-4">
+          <label className="mb-2 block text-xs uppercase tracking-wide text-hud-text-dim">
+            Judge model — for Cross-Model only
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <select
+              value={evaluatorProvider}
+              onChange={(e) => {
+                const p = e.target.value;
+                setEvaluatorProvider(p);
+                setEvaluatorModel(modelsData.models[p]?.[0] ?? "");
+              }}
+              className="rounded-sm border-2 border-chrome-border bg-chrome-dark p-2 font-mono text-sm text-hud-text outline-none focus:border-hud-pink"
+            >
+              {modelsData.providers.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+            <select
+              value={evaluatorModel}
+              onChange={(e) => setEvaluatorModel(e.target.value)}
+              className="rounded-sm border-2 border-chrome-border bg-chrome-dark p-2 font-mono text-sm text-hud-text outline-none focus:border-hud-pink"
+            >
+              {(modelsData.models[evaluatorProvider] ?? []).map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
         <TrackSelectCard
           title="SELF-REFINE"
@@ -129,10 +174,12 @@ export default function StartScreen() {
         />
         <TrackSelectCard
           title="CROSS-MODEL"
-          description="Several models race the same prompt side by side. Best score wins. (Simulated demo.)"
+          description="One model answers, a different model judges it — feedback loops back for a sharper next round."
           accent="var(--color-hud-cyan)"
           icon={<FlagIcon />}
           onSelect={() => go("cross_model")}
+          disabled={!canRunArena}
+          disabledReason={modelsError ? "Backend unreachable" : "Waiting on model list from backend…"}
         />
         <TrackSelectCard
           title="PROMPT OPT"
@@ -149,7 +196,7 @@ export default function StartScreen() {
         className="mt-10 text-center text-[11px] text-hud-text-dim"
         style={{ textShadow: "0 0 6px var(--color-chrome-dark), 0 0 6px var(--color-chrome-dark)" }}
       >
-        Self-Refine and Prompt Opt call real models through your backend. Cross-Model is a simulated demo.
+        All three tracks call real models through your backend — no simulated runs.
       </p>
     </div>
   );

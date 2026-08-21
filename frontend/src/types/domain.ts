@@ -3,6 +3,14 @@ export type RunMode = "self_refine" | "cross_model" | "prompt_optimization";
 export type StepKind = "prompt" | "generation" | "evaluation" | "critique" | "refinement";
 export type StepStatus = "locked" | "active" | "complete";
 
+export type CharacterState = "idle" | "thinking" | "writing" | "talking" | "nod" | "shake" | "celebrate" | "sad";
+
+export interface TickerEntry {
+  id: string;
+  text: string;
+  tone: "info" | "good" | "bad";
+}
+
 export interface ScoreDimension {
   label: string;
   value: number;
@@ -30,29 +38,14 @@ export interface PipelineRunState {
   tokenCount: number;
   isRunning: boolean;
   isDone: boolean;
-}
-
-export interface ModelLaneState {
-  id: string;
-  name: string;
-  colorVar: string;
-  status: "queued" | "generating" | "evaluating" | "finished";
-  text: string;
-  score: number | null;
-  elapsedMs: number | null;
-}
-
-export interface ArenaRunState {
-  lanes: ModelLaneState[];
-  isRunning: boolean;
-  isDone: boolean;
+  tickerLog: TickerEntry[];
 }
 
 export const STEP_SUBTITLES: Record<StepKind, string> = {
   prompt: "The starting question or task sent to the model",
   generation: "The model writes its response — tokens stream in live",
   evaluation: "Each quality dimension is scored on a 0–100 rubric",
-  critique: "The model reviews its own work and identifies weaknesses",
+  critique: "The judge reviews the response and identifies weaknesses",
   refinement: "A new, improved response incorporating the feedback",
 };
 

@@ -16,6 +16,8 @@ const MODE_LABELS: Record<string, string> = {
 export default function HudBar({
   mode,
   model,
+  provider,
+  evaluator,
   round,
   maxRounds,
   elapsedMs,
@@ -24,6 +26,8 @@ export default function HudBar({
 }: {
   mode: string;
   model: string;
+  provider?: string;
+  evaluator?: string;
   round?: number;
   maxRounds?: number;
   elapsedMs: number;
@@ -35,7 +39,8 @@ export default function HudBar({
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 text-xs sm:text-sm">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
           <HudStat label="MODE" value={MODE_LABELS[mode] ?? mode} color="var(--color-hud-cyan)" />
-          <HudStat label="MODEL" value={model} color="var(--color-hud-text)" />
+          <HudStat label="MODEL" value={provider ? `${model} (${provider})` : model} color="var(--color-hud-text)" />
+          {evaluator && <HudStat label="JUDGE" value={evaluator} color="var(--color-hud-pink)" />}
           {round !== undefined && (
             <HudStat label="ROUND" value={`${round}/${maxRounds}`} color="var(--color-hud-amber)" />
           )}

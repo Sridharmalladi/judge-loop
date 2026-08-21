@@ -122,7 +122,7 @@ html, body {
   background: var(--color-chrome-dark);
   color: var(--color-hud-text);
   font-family: var(--font-mono);
-  cursor: url("/cursor-glove.svg") 7 1, auto;
+  cursor: url("/cursor-cloud.svg") 8 4, auto;
 }
 
 button,
@@ -130,7 +130,7 @@ a,
 [role="button"],
 input[type="button"],
 input[type="submit"] {
-  cursor: url("/cursor-glove.svg") 7 1, pointer;
+  cursor: url("/cursor-cloud.svg") 8 4, pointer;
 }
 
 #root {
@@ -173,6 +173,225 @@ input[type="submit"] {
 
 @media (prefers-reduced-motion: reduce) {
   .parallax-layer {
+    animation: none !important;
+  }
+}
+
+/* ── Speech bubble — pixel-bordered, used above characters ── */
+.speech-bubble {
+  position: relative;
+  max-width: 160px;
+  padding: 6px 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.3;
+  text-align: center;
+  background: var(--color-chrome);
+  border: 2px solid;
+  border-radius: 4px;
+}
+
+.speech-bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 8px;
+  height: 8px;
+  background: var(--color-chrome);
+  border-right: 2px solid;
+  border-bottom: 2px solid;
+  border-color: inherit;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+/* ── Pixel character sprite — plain divs on a 64x64 design grid, no image
+   assets. `--pc-color` is set inline per instance (lane color / theme). ── */
+.pixel-character {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.pc-scale {
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+
+.pc-rig {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 100%;
+}
+
+.pc-antenna-tip {
+  position: absolute;
+  left: 28px;
+  top: 0;
+  width: 8px;
+  height: 8px;
+  background: var(--pc-color);
+}
+
+.pc-antenna-stalk {
+  position: absolute;
+  left: 30px;
+  top: 6px;
+  width: 4px;
+  height: 8px;
+  background: var(--pc-color);
+}
+
+.pc-head {
+  position: absolute;
+  left: 16px;
+  top: 12px;
+  width: 32px;
+  height: 20px;
+  background: var(--pc-color);
+}
+
+.pc-visor {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+  width: 24px;
+  height: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: var(--color-chrome-dark);
+  transform-origin: 50% 50%;
+}
+
+.pc-eye {
+  width: 4px;
+  height: 4px;
+  background: #fff;
+  animation: pc-blink 4.5s steps(1) infinite;
+}
+
+.pc-body {
+  position: absolute;
+  left: 12px;
+  top: 32px;
+  width: 40px;
+  height: 24px;
+  background: var(--pc-color);
+}
+
+.pc-arm {
+  position: absolute;
+  top: 34px;
+  width: 8px;
+  height: 16px;
+  background: var(--pc-color);
+  transform-origin: 50% 0%;
+}
+
+.pc-arm-l {
+  left: 4px;
+}
+
+.pc-arm-r {
+  left: 52px;
+}
+
+.pc-shadow {
+  position: absolute;
+  left: 12px;
+  top: 60px;
+  width: 40px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+@keyframes pc-blink {
+  0%, 92%, 100% { opacity: 1; }
+  95% { opacity: 0; }
+}
+
+@keyframes pc-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+.pc-idle { animation: pc-bob 2.2s ease-in-out infinite; }
+
+@keyframes pc-sway {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+.pc-thinking { animation: pc-sway 2.6s ease-in-out infinite; }
+.pc-thinking .pc-antenna-tip { animation: pc-pulse 1s ease-in-out infinite; }
+
+@keyframes pc-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.pc-writing { animation: pc-bob 1.4s ease-in-out infinite; }
+.pc-writing .pc-arm-r { animation: pc-scribble 0.35s ease-in-out infinite; }
+
+@keyframes pc-scribble {
+  0%, 100% { transform: rotate(-10deg); }
+  50% { transform: rotate(35deg); }
+}
+
+.pc-talking { animation: pc-bob 1.8s ease-in-out infinite; }
+.pc-talking .pc-visor { animation: pc-flap 0.32s ease-in-out infinite; }
+
+@keyframes pc-flap {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.35); }
+}
+
+@keyframes pc-nod {
+  0%, 52%, 100% { transform: rotate(0deg); }
+  13% { transform: rotate(14deg); }
+  26% { transform: rotate(0deg); }
+  39% { transform: rotate(14deg); }
+}
+.pc-nod { animation: pc-nod 3s ease-in-out infinite; }
+
+@keyframes pc-shake {
+  0%, 52%, 100% { transform: rotate(0deg); }
+  13% { transform: rotate(-14deg); }
+  26% { transform: rotate(0deg); }
+  39% { transform: rotate(14deg); }
+}
+.pc-shake { animation: pc-shake 3s ease-in-out infinite; }
+
+@keyframes pc-celebrate {
+  0%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-8px); }
+  50% { transform: translateY(0); }
+}
+.pc-celebrate { animation: pc-celebrate 0.7s ease-in-out infinite; }
+.pc-celebrate .pc-arm-r { animation: pc-raise 0.7s ease-in-out infinite; }
+
+@keyframes pc-raise {
+  0%, 100% { transform: rotate(-60deg); }
+  50% { transform: rotate(-100deg); }
+}
+
+.pc-sad {
+  transform: translateY(4px) rotate(4deg);
+  filter: grayscale(0.35) brightness(0.85);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pc-rig,
+  .pc-idle,
+  .pc-thinking,
+  .pc-writing,
+  .pc-talking,
+  .pc-nod,
+  .pc-shake,
+  .pc-celebrate,
+  .pc-eye,
+  .pc-visor,
+  .pc-arm-r {
     animation: none !important;
   }
 }

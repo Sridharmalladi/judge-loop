@@ -11,8 +11,10 @@ from .base import ModelAdapter, AdapterError
 from .groq_adapter import GroqAdapter, GROQ_MODELS
 from .openrouter_adapter import OpenRouterAdapter, OPENROUTER_MODELS
 from .gemini_adapter import GeminiAdapter, GEMINI_MODELS
+from .huggingface_adapter import HuggingFaceAdapter, HUGGINGFACE_MODELS
 from .ollama_adapter import OllamaAdapter, OLLAMA_MODELS
 from ..config import settings
+from ..engine.reliability import tracker as reliability_tracker
 
 
 class ModelRegistry:
@@ -36,6 +38,11 @@ class ModelRegistry:
         if settings.google_gemini_api_key:
             self._adapters["gemini"] = GeminiAdapter(settings.google_gemini_api_key)
             self._model_catalog["gemini"] = GEMINI_MODELS
+
+        hf_keys = settings.get_huggingface_keys()
+        if hf_keys:
+            self._adapters["huggingface"] = HuggingFaceAdapter(hf_keys)
+            self._model_catalog["huggingface"] = HUGGINGFACE_MODELS
 
         if settings.ollama_enabled:
             self._adapters["ollama"] = OllamaAdapter(settings.ollama_base_url)
@@ -70,13 +77,19 @@ class ModelRegistry:
     ) -> dict:
         """Convenience: get adapter + call generate in one step."""
         adapter = self.get_adapter(provider)
-        return await adapter._timed_generate(
-            prompt=prompt,
-            system_prompt=system_prompt,
-            model=model,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+        try:
+            result = await adapter._timed_generate(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                model=model,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+        except Exception:
+            reliability_tracker.record_failure(provider, model)
+            raise
+        reliability_tracker.record_success(provider, model)
+        return result
 
 
 # Global instance — import this, not the class

@@ -16,6 +16,7 @@ from ..models.domain import (
 )
 from ..adapters.registry import registry
 from ..engine.refinement import run_refinement
+from ..engine.reliability import tracker as reliability_tracker
 from ..storage.runs import run_store
 
 router = APIRouter(prefix="/api", tags=["refinement"])
@@ -30,6 +31,12 @@ async def list_models():
         # user has pulled locally, so refresh it live instead of trusting
         # the placeholder set at registry init.
         models["ollama"] = await registry.get_adapter("ollama").list_models()
+
+    # Most-reliable-first within each provider's list, so a model that's
+    # been erroring or rate-limited sinks to the bottom instead of sitting
+    # as the pre-selected default.
+    models = {provider: reliability_tracker.sort_models(provider, ms) for provider, ms in models.items()}
+
     return AvailableModelsResponse(
         providers=registry.get_available_providers(),
         models=models,

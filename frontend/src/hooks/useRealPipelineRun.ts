@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { WS_URL } from "../lib/api";
-import type { PipelineRunState, ScoreDimension, StepKind, StepState } from "../types/domain";
+import type { PipelineRunState, ScoreDimension, StepKind, StepState, TickerEntry } from "../types/domain";
 
 // Real backend delivers one complete result per round (not staged
 // prompt->generation->evaluation->critique->refinement events) — so real
 // mode has 4 stages, not 5. The judge does return a per-dimension score
 // breakdown though, which drives the evaluation step's radar chart.
-// See usePipelineRun.ts for the mock/demo equivalent.
+// Used for all three real strategies — self_refine and prompt_optimization
+// judge themselves, cross_model sends a separate evaluator_provider/model
+// and a different model plays judge; the event shape is identical either way.
 const STEP_ORDER: StepKind[] = ["prompt", "generation", "evaluation", "critique"];
 
 const DIMENSION_LABELS: Record<string, string> = {
@@ -36,6 +38,13 @@ function sleep(ms: number, isCancelled: () => boolean): Promise<void> {
   });
 }
 
+let logSeq = 0;
+
+function withLog(s: PipelineRunState, text: string, tone: TickerEntry["tone"] = "info"): PipelineRunState {
+  const entry: TickerEntry = { id: `${Date.now()}-${logSeq++}`, text, tone };
+  return { ...s, tickerLog: [...s.tickerLog.slice(-39), entry] };
+}
+
 interface RealIterationEvent {
   type: "iteration";
   run_id: string;
@@ -62,13 +71,24 @@ type WsMessage =
 
 interface Options {
   prompt: string;
-  strategy: "self_refine" | "prompt_optimization";
+  strategy: "self_refine" | "prompt_optimization" | "cross_model";
   provider: string;
   model: string;
   maxRounds: number;
+  // cross_model only — a separate judge model. Ignored otherwise.
+  evaluatorProvider?: string;
+  evaluatorModel?: string;
 }
 
-export function useRealPipelineRun({ prompt, strategy, provider, model, maxRounds }: Options) {
+export function useRealPipelineRun({
+  prompt,
+  strategy,
+  provider,
+  model,
+  maxRounds,
+  evaluatorProvider,
+  evaluatorModel,
+}: Options) {
   const [state, setState] = useState<PipelineRunState>({
     round: 1,
     maxRounds,
@@ -78,9 +98,13 @@ export function useRealPipelineRun({ prompt, strategy, provider, model, maxRound
     tokenCount: 0,
     isRunning: true,
     isDone: false,
+    tickerLog: [],
   });
   const [error, setError] = useState<string | null>(null);
   const [generatorLabel, setGeneratorLabel] = useState(`${provider}/${model}`);
+  const [evaluatorLabel, setEvaluatorLabel] = useState(
+    evaluatorProvider && evaluatorModel ? `${evaluatorProvider}/${evaluatorModel}` : "",
+  );
 
   useEffect(() => {
     // Defense in depth — PipelineRunPage's own effect redirects home when
@@ -97,6 +121,10 @@ export function useRealPipelineRun({ prompt, strategy, provider, model, maxRound
     // a clean "complete"/"error" frame earlier in the chain.
     let settled = false;
     const startedAt = Date.now();
+    // Updated from the "status" ws frame — the generatorLabel *state* is
+    // one render behind inside this closure, so track it locally for
+    // ticker text instead of reading the stale outer variable.
+    let activeLabel = `${provider}/${model}`;
 
     const timer = setInterval(() => {
       if (cancelled()) return;
@@ -109,6 +137,11 @@ export function useRealPipelineRun({ prompt, strategy, provider, model, maxRound
         ...s,
         steps: s.steps.map((st) => (st.kind === kind ? { ...st, ...patch } : st)),
       }));
+    }
+
+    function pushLog(text: string, tone: TickerEntry["tone"] = "info") {
+      if (cancelled()) return;
+      setState((s) => withLog(s, text, tone));
     }
 
     async function streamInto(kind: StepKind, text: string) {
@@ -143,19 +176,23 @@ export function useRealPipelineRun({ prompt, strategy, provider, model, maxRound
       await sleep(150, cancelled);
 
       // 2. GENERATION — real model output
+      pushLog(`Round ${round} — ${activeLabel} is responding…`);
       await streamInto("generation", ev.response);
       await sleep(200, cancelled);
 
       // 3. EVALUATION — real judge score, x10 to match the UI's /100 scale
+      pushLog(`Judge is scoring round ${round}…`);
       updateStep("evaluation", { status: "active", content: "" });
       await sleep(400, cancelled);
       if (cancelled()) return;
       const scaled = Math.round(ev.score * 10);
       const dims = toScoreDimensions(ev.dimension_scores ?? {});
       updateStep("evaluation", { status: "complete", content: `Overall: ${scaled}/100`, scores: dims });
+      pushLog(`Score: ${scaled}/100`, scaled >= 70 ? "good" : scaled < 40 ? "bad" : "info");
       await sleep(200, cancelled);
 
       // 4. CRITIQUE — real judge critique/strengths/weaknesses/suggestions
+      pushLog(`Judge critique coming in for round ${round}…`);
       const critiqueText =
         [
           ev.critique,
@@ -203,6 +240,9 @@ export function useRealPipelineRun({ prompt, strategy, provider, model, maxRound
           strategy,
           generator_provider: provider,
           generator_model: model,
+          ...(evaluatorProvider && evaluatorModel
+            ? { evaluator_provider: evaluatorProvider, evaluator_model: evaluatorModel }
+            : {}),
           temperature: 0.7,
           max_tokens: 1024,
           max_iterations: maxRounds,
@@ -225,15 +265,26 @@ export function useRealPipelineRun({ prompt, strategy, provider, model, maxRound
       }
 
       if (msg.type === "status") {
+        activeLabel = msg.generator;
         setGeneratorLabel(msg.generator);
+        if (msg.evaluator) setEvaluatorLabel(msg.evaluator);
+        pushLog(`Connected — ${msg.generator} starting round 1…`);
       } else if (msg.type === "iteration") {
         revealChain = revealChain.then(() => (cancelled() ? undefined : revealIteration(msg)));
       } else if (msg.type === "complete") {
-        settle(() => setState((s) => ({ ...s, isRunning: false, isDone: true })));
+        settle(() =>
+          setState((s) =>
+            withLog(
+              { ...s, isRunning: false, isDone: true },
+              `Run complete — final score ${s.history[s.history.length - 1]?.score ?? "—"}/100`,
+              "good",
+            ),
+          ),
+        );
       } else if (msg.type === "error") {
         settle(() => {
           setError(msg.error);
-          setState((s) => ({ ...s, isRunning: false }));
+          setState((s) => withLog({ ...s, isRunning: false }, `Error: ${msg.error}`, "bad"));
         });
       }
     };
@@ -241,7 +292,7 @@ export function useRealPipelineRun({ prompt, strategy, provider, model, maxRound
     ws.onerror = () => {
       settle(() => {
         setError("WebSocket connection failed");
-        setState((s) => ({ ...s, isRunning: false }));
+        setState((s) => withLog({ ...s, isRunning: false }, "WebSocket connection failed", "bad"));
       });
     };
 
@@ -252,7 +303,7 @@ export function useRealPipelineRun({ prompt, strategy, provider, model, maxRound
       // short of navigating away manually.
       settle(() => {
         setError("Connection closed unexpectedly");
-        setState((s) => ({ ...s, isRunning: false }));
+        setState((s) => withLog({ ...s, isRunning: false }, "Connection closed unexpectedly", "bad"));
       });
     };
 
@@ -262,7 +313,7 @@ export function useRealPipelineRun({ prompt, strategy, provider, model, maxRound
       ws.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prompt, strategy, provider, model, maxRounds]);
+  }, [prompt, strategy, provider, model, maxRounds, evaluatorProvider, evaluatorModel]);
 
-  return { state, error, generatorLabel };
+  return { state, error, generatorLabel, evaluatorLabel };
 }

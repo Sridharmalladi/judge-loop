@@ -19,6 +19,31 @@ const CLOUD_SVG = encodeURIComponent(`
   </g>
 </svg>`);
 
+// Two more depth layers — smaller/dimmer/slower far back, bigger/brighter
+// nearer the horizon — same blocky-rect pixel-cloud style as CLOUD_SVG,
+// just different scale so the sky reads as layered instead of flat.
+const CLOUD_FAR_SVG = encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="36" viewBox="0 0 500 36">
+  <g fill="#ffffff" opacity="0.08">
+    <rect x="60" y="14" width="40" height="8"/>
+    <rect x="72" y="8" width="18" height="8"/>
+    <rect x="250" y="18" width="50" height="8"/>
+    <rect x="265" y="10" width="24" height="8"/>
+    <rect x="420" y="12" width="36" height="8"/>
+  </g>
+</svg>`);
+
+const CLOUD_NEAR_SVG = encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="80" viewBox="0 0 700 80">
+  <g fill="#ffffff" opacity="0.16">
+    <rect x="40" y="30" width="90" height="14"/>
+    <rect x="65" y="16" width="44" height="16"/>
+    <rect x="380" y="40" width="110" height="14"/>
+    <rect x="410" y="24" width="54" height="18"/>
+    <rect x="590" y="34" width="70" height="12"/>
+  </g>
+</svg>`);
+
 export default function ParallaxBackground() {
   return (
     <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
@@ -55,13 +80,31 @@ export default function ParallaxBackground() {
         }}
       />
 
-      {/* clouds */}
+      {/* clouds — three depths drifting at different speeds */}
+      <div
+        className="parallax-layer absolute inset-x-0 top-[3%] h-9 animate-drift-slow opacity-60"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,${CLOUD_FAR_SVG}")`,
+          backgroundRepeat: "repeat-x",
+          backgroundSize: "500px 36px",
+          width: "200%",
+        }}
+      />
       <div
         className="parallax-layer absolute inset-x-0 top-[8%] h-16 animate-drift-slow opacity-70"
         style={{
           backgroundImage: `url("data:image/svg+xml,${CLOUD_SVG}")`,
           backgroundRepeat: "repeat-x",
           backgroundSize: "600px 60px",
+          width: "200%",
+        }}
+      />
+      <div
+        className="parallax-layer absolute inset-x-0 top-[16%] h-20 animate-drift-mid opacity-80"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,${CLOUD_NEAR_SVG}")`,
+          backgroundRepeat: "repeat-x",
+          backgroundSize: "700px 80px",
           width: "200%",
         }}
       />

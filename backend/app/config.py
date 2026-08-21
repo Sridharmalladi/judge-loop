@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     openrouter_api_key: Optional[str] = None
     google_gemini_api_key: Optional[str] = None
     huggingface_api_key: Optional[str] = None
+    # Comma-separated list of extra HF tokens, rotated on 429/401/403 so one
+    # exhausted free-tier key doesn't stall a run. Merged with the singular
+    # key above via get_huggingface_keys().
+    huggingface_api_keys: Optional[str] = None
 
     # ── Local models (Ollama) ──
     # Off by default — a deployed backend (e.g. Render) can't reach a
@@ -51,6 +55,16 @@ class Settings(BaseSettings):
             return [*self.cors_origins, self.frontend_url]
         return self.cors_origins
 
+    def get_huggingface_keys(self) -> list[str]:
+        """Merge huggingface_api_keys (CSV) and the singular huggingface_api_key
+        into one deduped, order-preserving list for HuggingFaceAdapter's rotation."""
+        keys: list[str] = []
+        if self.huggingface_api_keys:
+            keys.extend(k.strip() for k in self.huggingface_api_keys.split(",") if k.strip())
+        if self.huggingface_api_key and self.huggingface_api_key not in keys:
+            keys.append(self.huggingface_api_key)
+        return keys
+
     def get_available_providers(self) -> list[str]:
         """Returns which providers have API keys configured."""
         available = []
@@ -60,7 +74,7 @@ class Settings(BaseSettings):
             available.append("openrouter")
         if self.google_gemini_api_key:
             available.append("gemini")
-        if self.huggingface_api_key:
+        if self.get_huggingface_keys():
             available.append("huggingface")
         if self.ollama_enabled:
             available.append("ollama")

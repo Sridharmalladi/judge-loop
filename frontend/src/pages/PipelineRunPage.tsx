@@ -3,29 +3,44 @@ import { useLocation, useNavigate } from "react-router-dom";
 import HudBar from "../components/HudBar";
 import StepCard from "../components/StepCard";
 import ProgressTrack from "../components/ProgressTrack";
+import EventTicker from "../components/EventTicker";
+import PixelCharacter from "../components/PixelCharacter";
+import SpeechBubble from "../components/SpeechBubble";
+import Leaderboard from "../components/Leaderboard";
 import { useRealPipelineRun } from "../hooks/useRealPipelineRun";
+import { stepsToCharacterState, stepsToJudgeState } from "../lib/characterState";
+
+type Variant = "self_refine" | "prompt_optimization" | "cross_model";
 
 interface RunState {
   prompt?: string;
   provider?: string;
   model?: string;
+  evaluatorProvider?: string;
+  evaluatorModel?: string;
 }
 
-export default function PipelineRunPage({ variant }: { variant: "self_refine" | "prompt_optimization" }) {
+export default function PipelineRunPage({ variant }: { variant: Variant }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { prompt, provider, model } = (location.state as RunState | null) ?? {};
+  const { prompt, provider, model, evaluatorProvider, evaluatorModel } =
+    (location.state as RunState | null) ?? {};
+  const isCrossModel = variant === "cross_model";
+  const hasJudge = Boolean(evaluatorProvider && evaluatorModel);
 
   useEffect(() => {
     if (!prompt || !provider || !model) navigate("/");
-  }, [prompt, provider, model, navigate]);
+    else if (isCrossModel && !hasJudge) navigate("/");
+  }, [prompt, provider, model, isCrossModel, hasJudge, navigate]);
 
-  const { state, error, generatorLabel } = useRealPipelineRun({
+  const { state, error, generatorLabel, evaluatorLabel } = useRealPipelineRun({
     prompt: prompt ?? "",
     strategy: variant,
     provider: provider ?? "",
     model: model ?? "",
     maxRounds: 4,
+    evaluatorProvider,
+    evaluatorModel,
   });
   const [selectedRound, setSelectedRound] = useState<number | null>(null);
   const currentScore = state.history[state.history.length - 1]?.score ?? null;
@@ -34,16 +49,20 @@ export default function PipelineRunPage({ variant }: { variant: "self_refine" | 
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [state.round]);
 
-  if (!prompt || !provider || !model) return null;
+  if (!prompt || !provider || !model || (isCrossModel && !hasJudge)) return null;
 
   const selectedSnapshot = selectedRound != null ? state.history.find((h) => h.round === selectedRound) : null;
   const stepsToShow = selectedSnapshot ? selectedSnapshot.steps : state.steps;
+  const generator = stepsToCharacterState(state.steps, state.isDone, !!error);
+  const judge = stepsToJudgeState(state.steps, state.isDone, !!error, currentScore);
 
   return (
     <div>
       <HudBar
         mode={variant}
         model={generatorLabel}
+        provider={provider}
+        evaluator={isCrossModel ? evaluatorLabel : undefined}
         round={state.round}
         maxRounds={state.maxRounds}
         elapsedMs={state.elapsedMs}
@@ -51,7 +70,28 @@ export default function PipelineRunPage({ variant }: { variant: "self_refine" | 
         score={currentScore}
       />
 
-      <div className="mx-auto max-w-5xl px-4 py-8">
+      <div className="mx-auto max-w-5xl px-4 py-8 pb-28">
+        {isCrossModel ? (
+          <div className="mb-6 flex items-center justify-around gap-4 rounded-md border-2 border-chrome-border bg-chrome p-4">
+            <div className="flex flex-col items-center gap-2">
+              <span className="font-pixel text-[9px] text-hud-green">GENERATOR</span>
+              <PixelCharacter state={generator.state} color="var(--color-hud-green)" size={52} />
+              <SpeechBubble text={generator.caption} color="var(--color-hud-green)" />
+            </div>
+            <span className="font-pixel text-lg text-hud-text-dim">⚔</span>
+            <div className="flex flex-col items-center gap-2">
+              <span className="font-pixel text-[9px] text-hud-pink">JUDGE</span>
+              <PixelCharacter state={judge.state} color="var(--color-hud-pink)" size={52} flip />
+              <SpeechBubble text={judge.caption} color="var(--color-hud-pink)" />
+            </div>
+          </div>
+        ) : (
+          <div className="mb-6 flex items-center gap-3 rounded-md border-2 border-chrome-border bg-chrome p-3">
+            <PixelCharacter state={generator.state} size={48} />
+            <SpeechBubble text={generator.caption} />
+          </div>
+        )}
+
         <div className="mb-6">
           <ProgressTrack
             round={state.round}
@@ -91,6 +131,12 @@ export default function PipelineRunPage({ variant }: { variant: "self_refine" | 
           </div>
         )}
 
+        {state.isDone && !error && state.history.length > 1 && (
+          <div className="mb-6">
+            <Leaderboard history={state.history} />
+          </div>
+        )}
+
         {selectedSnapshot && (
           <div className="mb-4 flex items-center justify-between rounded-md border-2 border-hud-amber bg-chrome px-4 py-2">
             <span className="font-pixel text-[10px] text-hud-amber">
@@ -111,6 +157,8 @@ export default function PipelineRunPage({ variant }: { variant: "self_refine" | 
           ))}
         </div>
       </div>
+
+      <EventTicker entries={state.tickerLog} />
     </div>
   );
 }
