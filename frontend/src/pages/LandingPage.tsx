@@ -17,12 +17,21 @@ export default function LandingPage() {
       >
         JUDGE LOOP
       </h1>
-      <p className="mt-4 max-w-xl text-sm leading-relaxed text-hud-text-dim sm:text-base">
+      <p
+        className="mt-4 max-w-xl text-sm leading-relaxed text-hud-text sm:text-base"
+        style={{
+          textShadow:
+            "0 0 6px var(--color-chrome-dark), 0 0 10px var(--color-chrome-dark), 0 0 16px var(--color-hud-cyan)",
+        }}
+      >
         Watch an LLM improve its own answer, round after round — generate, get judged, revise, repeat. Every round
         is scored on relevance, coherence, completeness, conciseness, accuracy, and creativity, so you can watch
         exactly where it's improving, and where it isn't.
       </p>
-      <p className="mt-3 max-w-xl text-xs leading-relaxed text-hud-text-dim">
+      <p
+        className="mt-3 max-w-xl text-xs leading-relaxed text-hud-text-dim"
+        style={{ textShadow: "0 0 6px var(--color-chrome-dark), 0 0 10px var(--color-chrome-dark)" }}
+      >
         Next up: real prompt optimization — evolving the instructions themselves across a whole test set, not just
         one answer at a time.
       </p>

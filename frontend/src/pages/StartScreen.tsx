@@ -53,13 +53,22 @@ export default function StartScreen() {
     if (modelsData && modelsData.providers.length > 0 && !provider) {
       const first = modelsData.providers[0];
       setProvider(first);
-      setModel(modelsData.models[first]?.[0] ?? "");
-      // Default the judge to a different provider when one's available, so
-      // "cross-model" means something out of the box instead of a model
-      // judging its own twin.
-      const judgeProvider = modelsData.providers[1] ?? first;
-      setEvaluatorProvider(judgeProvider);
-      setEvaluatorModel(modelsData.models[judgeProvider]?.[0] ?? "");
+      const firstModels = modelsData.models[first] ?? [];
+      setModel(firstModels[0] ?? "");
+
+      // Default the judge to a genuinely different MODEL, not necessarily a
+      // different provider — a second unproven provider is a rate-limit
+      // waiting to happen. If the generator's own (often featured) provider
+      // has a second model, judge with that; only fall back to a different
+      // provider when it doesn't.
+      if (firstModels.length > 1) {
+        setEvaluatorProvider(first);
+        setEvaluatorModel(firstModels[1]);
+      } else {
+        const judgeProvider = modelsData.providers[1] ?? first;
+        setEvaluatorProvider(judgeProvider);
+        setEvaluatorModel(modelsData.models[judgeProvider]?.[0] ?? "");
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelsData]);
@@ -115,11 +124,6 @@ export default function StartScreen() {
             never stored on the server.
           </p>
         )}
-        {source === "real" && (
-          <p className="mt-3 text-xs text-hud-pink">
-            Uses this app's own backend keys — no setup needed. 🔥 marks the models most likely to work right now.
-          </p>
-        )}
       </header>
 
       <div className="mx-auto mb-6 max-w-2xl rounded-md border-2 border-chrome-border bg-chrome p-4">
@@ -150,9 +154,12 @@ export default function StartScreen() {
       </div>
 
       <div className="mx-auto mb-6 max-w-2xl rounded-md border-2 border-chrome-border bg-chrome p-4">
-        <label className="mb-2 block text-xs uppercase tracking-wide text-hud-text-dim">
-          Model — generator (Self-Refine / Prompt Opt / Cross-Model)
-        </label>
+        <div className="mb-2 flex items-baseline justify-between">
+          <label className="block text-xs uppercase tracking-wide text-hud-text-dim">
+            Model — generator (Self-Refine / Prompt Opt / Cross-Model)
+          </label>
+          {featured.length > 0 && <span className="text-[11px] text-hud-text-dim">🔥 = most reliable now</span>}
+        </div>
         {modelsLoading && <p className="text-sm text-hud-text-dim">Connecting to backend…</p>}
         {modelsError && (
           <p className="text-sm text-hud-pink">

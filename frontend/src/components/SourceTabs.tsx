@@ -4,16 +4,16 @@ import type { RunSource } from "../types/domain";
 
 const TABS: { id: RunSource; label: string; accent: string; blurb: string }[] = [
   {
+    id: "real",
+    label: "REAL",
+    accent: "var(--color-hud-pink)",
+    blurb: "Uses this app's own backend keys — no setup needed. 🔥 = the model most likely to work right now.",
+  },
+  {
     id: "byok",
     label: "BYOK",
     accent: "var(--color-hud-cyan)",
     blurb: "Bring your own free API key(s). Runs on your quota, not shared — you control the rate limits.",
-  },
-  {
-    id: "real",
-    label: "REAL",
-    accent: "var(--color-hud-pink)",
-    blurb: "Uses this app's own backend keys — no setup needed. Pick a 🔥 model for the most reliable results.",
   },
 ];
 
