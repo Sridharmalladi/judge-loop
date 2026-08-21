@@ -1,4 +1,11 @@
-import type { RoundResult } from "../types/domain";
+import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import type { RoundResult, ScoreDimension } from "../types/domain";
+import ScoreRadar from "./ScoreRadar";
+
+function roundScores(entry: RoundResult): ScoreDimension[] | undefined {
+  return entry.steps.find((s) => s.kind === "evaluation")?.scores;
+}
 
 export default function ProgressTrack({
   round,
@@ -13,6 +20,7 @@ export default function ProgressTrack({
   selectedRound: number | null;
   onSelectRound: (round: number | null) => void;
 }) {
+  const [hoveredRound, setHoveredRound] = useState<number | null>(null);
   const rounds = Array.from({ length: maxRounds }, (_, i) => i + 1);
   const clickable = history.length > 0;
   const latestRound = history.length > 0 ? history[history.length - 1] : null;
@@ -28,6 +36,7 @@ export default function ProgressTrack({
           const isCurrent = r === round && !done;
           const isSelected = selectedRound === r;
           const isNewBest = done && isLatestNewBest && r === latestRound!.round;
+          const dims = done ? roundScores(entry!) : undefined;
 
           const borderColor = isSelected
             ? "var(--color-hud-amber)"
@@ -50,8 +59,10 @@ export default function ProgressTrack({
               type="button"
               disabled={!done}
               onClick={() => onSelectRound(isSelected ? null : r)}
+              onMouseEnter={() => done && setHoveredRound(r)}
+              onMouseLeave={() => setHoveredRound(null)}
               title={done ? `View round ${r}` : undefined}
-              className={`flex flex-col items-center justify-center gap-1 rounded-sm border-2 py-3 transition-all disabled:cursor-default ${
+              className={`relative flex flex-col items-center justify-center gap-1 rounded-sm border-2 py-3 transition-all disabled:cursor-default ${
                 isNewBest && !isSelected ? "animate-pulse-glow" : ""
               }`}
               style={{
@@ -68,6 +79,24 @@ export default function ProgressTrack({
               <span className="font-mono text-xs" style={{ color: textColor }}>
                 {done ? entry!.score : isCurrent ? "···" : "—"}
               </span>
+
+              <AnimatePresence>
+                {hoveredRound === r && dims && dims.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute left-1/2 top-full z-30 mt-2 w-96 -translate-x-1/2 cursor-default rounded-md border-2 bg-chrome p-2 text-left shadow-lg"
+                    style={{ borderColor: "var(--color-hud-green)" }}
+                  >
+                    <p className="mb-1 text-center font-pixel text-[9px] text-hud-green">
+                      ROUND {r} — {entry!.score}/100
+                    </p>
+                    <ScoreRadar dims={dims} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </button>
           );
         })}
@@ -87,7 +116,7 @@ export default function ProgressTrack({
         <p className="mt-2 text-[11px] text-hud-text-dim">
           {selectedRound
             ? `Viewing round ${selectedRound} — click again, or "clear" to return to the latest.`
-            : "Click a round to review its steps."}
+            : "Hover a round for its score breakdown, or click to review its steps."}
         </p>
       )}
     </div>

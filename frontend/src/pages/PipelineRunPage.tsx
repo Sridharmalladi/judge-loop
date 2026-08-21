@@ -118,7 +118,7 @@ function RunView({
         score={currentScore}
       />
 
-      <div className="mx-auto max-w-5xl px-4 py-8 pb-28">
+      <div className="mx-auto max-w-5xl px-4 py-8">
         {isCrossModel ? (
           <div className="mb-6 flex items-center justify-around gap-4 rounded-md border-2 border-chrome-border bg-chrome p-4">
             <div className="flex flex-col items-center gap-2">

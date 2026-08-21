@@ -18,12 +18,15 @@ export default function EventTicker({ entries }: { entries: TickerEntry[] }) {
   if (entries.length === 0) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[25] border-t-2 border-chrome-border bg-chrome-dark/95 backdrop-blur-sm">
-      <div ref={scrollRef} className="mx-auto max-h-24 max-w-5xl overflow-y-auto px-4 py-2 font-mono text-[11px]">
+    <div className="fixed left-3 top-28 bottom-6 z-[25] flex w-56 flex-col rounded-md border-2 border-chrome-border bg-chrome-dark/95 backdrop-blur-sm">
+      <p className="flex-shrink-0 border-b-2 border-chrome-border px-3 py-2 font-pixel text-[9px] text-hud-text-dim">
+        ACTIVITY LOG
+      </p>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2 font-mono text-[11px] leading-snug">
         {entries.map((e) => (
-          <p key={e.id} className="flex items-center gap-2 py-0.5" style={{ color: TONE_COLOR[e.tone] }}>
-            <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: TONE_COLOR[e.tone] }} />
-            <span className="truncate">{e.text}</span>
+          <p key={e.id} className="flex items-start gap-2 py-1" style={{ color: TONE_COLOR[e.tone] }}>
+            <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: TONE_COLOR[e.tone] }} />
+            <span>{e.text}</span>
           </p>
         ))}
       </div>
