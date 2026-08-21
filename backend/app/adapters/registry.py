@@ -21,6 +21,26 @@ from ..engine.reliability import tracker as reliability_tracker
 
 logger = logging.getLogger(__name__)
 
+# BYOK — ad hoc adapter construction from a caller-supplied key, independent
+# of whatever the server itself has configured. Ollama has no key (it's a
+# local base_url) so it isn't a BYOK candidate.
+BYOK_ADAPTER_FACTORY = {
+    "groq": GroqAdapter,
+    "openrouter": OpenRouterAdapter,
+    "gemini": GeminiAdapter,
+    "huggingface": lambda key: HuggingFaceAdapter([key]),
+}
+
+# Full static catalog for every provider that COULD be used, regardless of
+# whether the server has a key for it — BYOK users pick from this, not from
+# get_available_models() (which only lists what the server itself can call).
+FULL_MODEL_CATALOG: dict[str, list[str]] = {
+    "groq": GROQ_MODELS,
+    "openrouter": OPENROUTER_MODELS,
+    "gemini": GEMINI_MODELS,
+    "huggingface": HUGGINGFACE_MODELS,
+}
+
 # A provider's own outage ("high demand", 502/503/504 from an upstream
 # load balancer) is usually gone within a couple seconds — worth one or
 # two quick retries before failing the whole run over it. Rate limits
@@ -82,6 +102,15 @@ class ModelRegistry:
     def get_available_providers(self) -> list[str]:
         return list(self._adapters.keys())
 
+    def get_byok_adapter(self, provider: str, api_key: str) -> ModelAdapter:
+        """Build a one-off adapter from a caller-supplied key. Never cached,
+        never touches self._adapters — it's used for exactly one generate()
+        call and then garbage collected."""
+        factory = BYOK_ADAPTER_FACTORY.get(provider)
+        if not factory:
+            raise AdapterError(provider, f"'{provider}' doesn't support bring-your-own-key")
+        return factory(api_key)
+
     async def generate(
         self,
         provider: str,
@@ -90,14 +119,21 @@ class ModelRegistry:
         system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: int = 1024,
+        api_key: Optional[str] = None,
     ) -> dict:
         """Convenience: get adapter + call generate in one step.
 
         Retries transient failures (provider 5xx, network blips, short rate
         limits) in place before giving up — see the module docstring above
         for why each case is or isn't worth retrying.
+
+        api_key (BYOK): when given, calls run against a one-off adapter for
+        the caller's own key instead of the server's configured one, and
+        results aren't fed into the shared reliability ranking — that
+        ranking describes the server's own keys' health, not a visitor's.
         """
-        adapter = self.get_adapter(provider)
+        is_byok = api_key is not None
+        adapter = self.get_byok_adapter(provider, api_key) if is_byok else self.get_adapter(provider)
         last_error: Exception = AdapterError(provider, "generate() never attempted")
 
         for attempt in range(MAX_ATTEMPTS):
@@ -109,7 +145,8 @@ class ModelRegistry:
                     temperature=temperature,
                     max_tokens=max_tokens,
                 )
-                reliability_tracker.record_success(provider, model)
+                if not is_byok:
+                    reliability_tracker.record_success(provider, model)
                 return result
 
             except RateLimitError as e:
@@ -137,7 +174,8 @@ class ModelRegistry:
                 logger.info(f"[{provider}/{model}] network error ({e}), retrying in {delay}s (attempt {attempt + 1}/{MAX_ATTEMPTS})")
                 await asyncio.sleep(delay)
 
-        reliability_tracker.record_failure(provider, model)
+        if not is_byok:
+            reliability_tracker.record_failure(provider, model)
         raise last_error
 
 

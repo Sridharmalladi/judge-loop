@@ -1,5 +1,11 @@
 export type RunMode = "self_refine" | "cross_model" | "prompt_optimization";
 
+// Where the run's model calls actually come from — orthogonal to RunMode.
+// byok: caller's own API key(s), used for exactly that run, never stored server-side.
+// demo: fully simulated client-side, zero API calls, always completes.
+// real: this app's own shared backend keys — subject to shared rate limits.
+export type RunSource = "byok" | "demo" | "real";
+
 export type StepKind = "prompt" | "generation" | "evaluation" | "critique" | "refinement";
 export type StepStatus = "locked" | "active" | "complete";
 

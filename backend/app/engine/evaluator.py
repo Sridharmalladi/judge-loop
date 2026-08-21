@@ -201,6 +201,7 @@ async def evaluate(
         # budget mid-thought and never emit the verdict. Judge output is
         # short regardless of model, so the extra headroom costs little.
         max_tokens=2000,
+        api_key=evaluator_config.api_key,
     )
 
     evaluation = _parse_judge_response(result["content"])

@@ -54,6 +54,7 @@ async def websocket_refine(websocket: WebSocket):
                 model_name=req.generator_model,
                 temperature=req.temperature,
                 max_tokens=req.max_tokens,
+                api_key=req.generator_api_key,
             )
             evaluator_config = None
             if req.evaluator_provider and req.evaluator_model:
@@ -61,6 +62,7 @@ async def websocket_refine(websocket: WebSocket):
                     provider=req.evaluator_provider,
                     model_name=req.evaluator_model,
                     temperature=0.3,
+                    api_key=req.evaluator_api_key,
                 )
 
             run = RefinementRun(

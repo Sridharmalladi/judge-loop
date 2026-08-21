@@ -84,6 +84,7 @@ async def run_refinement(
                 prompt=prompt,
                 temperature=run.generator_config.temperature,
                 max_tokens=run.generator_config.max_tokens,
+                api_key=run.generator_config.api_key,
             )
 
             # ── STEP 3: Evaluate ──

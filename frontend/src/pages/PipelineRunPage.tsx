@@ -8,23 +8,34 @@ import PixelCharacter from "../components/PixelCharacter";
 import SpeechBubble from "../components/SpeechBubble";
 import Leaderboard from "../components/Leaderboard";
 import { useRealPipelineRun } from "../hooks/useRealPipelineRun";
+import { useDemoPipelineRun } from "../hooks/useDemoPipelineRun";
 import { stepsToCharacterState, stepsToJudgeState } from "../lib/characterState";
+import type { PipelineRunState, RunSource } from "../types/domain";
 
 type Variant = "self_refine" | "prompt_optimization" | "cross_model";
 
-interface RunState {
+interface RunLocationState {
   prompt?: string;
   provider?: string;
   model?: string;
   evaluatorProvider?: string;
   evaluatorModel?: string;
+  source?: RunSource;
+  generatorApiKey?: string;
+  evaluatorApiKey?: string;
 }
 
 export default function PipelineRunPage({ variant }: { variant: Variant }) {
   const location = useLocation();
+  const source = (location.state as RunLocationState | null)?.source ?? "real";
+  return source === "demo" ? <DemoRun variant={variant} /> : <RealRun variant={variant} />;
+}
+
+function RealRun({ variant }: { variant: Variant }) {
+  const location = useLocation();
   const navigate = useNavigate();
-  const { prompt, provider, model, evaluatorProvider, evaluatorModel } =
-    (location.state as RunState | null) ?? {};
+  const { prompt, provider, model, evaluatorProvider, evaluatorModel, generatorApiKey, evaluatorApiKey } =
+    (location.state as RunLocationState | null) ?? {};
   const isCrossModel = variant === "cross_model";
   const hasJudge = Boolean(evaluatorProvider && evaluatorModel);
 
@@ -41,15 +52,87 @@ export default function PipelineRunPage({ variant }: { variant: Variant }) {
     maxRounds: 4,
     evaluatorProvider,
     evaluatorModel,
+    apiKey: generatorApiKey,
+    evaluatorApiKey,
   });
+
+  if (!prompt || !provider || !model || (isCrossModel && !hasJudge)) return null;
+
+  return (
+    <RunView
+      variant={variant}
+      provider={provider}
+      state={state}
+      error={error}
+      generatorLabel={generatorLabel}
+      evaluatorLabel={evaluatorLabel}
+    />
+  );
+}
+
+function DemoRun({ variant }: { variant: Variant }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { prompt, provider, model, evaluatorProvider, evaluatorModel } =
+    (location.state as RunLocationState | null) ?? {};
+  const isCrossModel = variant === "cross_model";
+  const hasJudge = Boolean(evaluatorProvider && evaluatorModel);
+
+  useEffect(() => {
+    if (!prompt || !provider || !model) navigate("/");
+    else if (isCrossModel && !hasJudge) navigate("/");
+  }, [prompt, provider, model, isCrossModel, hasJudge, navigate]);
+
+  const { state, error, generatorLabel, evaluatorLabel } = useDemoPipelineRun({
+    prompt: prompt ?? "",
+    strategy: variant,
+    provider: provider ?? "",
+    model: model ?? "",
+    maxRounds: 4,
+    evaluatorProvider,
+    evaluatorModel,
+  });
+
+  if (!prompt || !provider || !model || (isCrossModel && !hasJudge)) return null;
+
+  return (
+    <RunView
+      variant={variant}
+      provider={provider}
+      state={state}
+      error={error}
+      generatorLabel={generatorLabel}
+      evaluatorLabel={evaluatorLabel}
+      isDemo
+    />
+  );
+}
+
+function RunView({
+  variant,
+  provider,
+  state,
+  error,
+  generatorLabel,
+  evaluatorLabel,
+  isDemo,
+}: {
+  variant: Variant;
+  provider: string;
+  state: PipelineRunState;
+  error: string | null;
+  generatorLabel: string;
+  evaluatorLabel: string;
+  isDemo?: boolean;
+}) {
+  const navigate = useNavigate();
+  const isCrossModel = variant === "cross_model";
   const [selectedRound, setSelectedRound] = useState<number | null>(null);
   const currentScore = state.history[state.history.length - 1]?.score ?? null;
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [state.round]);
-
-  if (!prompt || !provider || !model || (isCrossModel && !hasJudge)) return null;
 
   const selectedSnapshot = selectedRound != null ? state.history.find((h) => h.round === selectedRound) : null;
   const stepsToShow = selectedSnapshot ? selectedSnapshot.steps : state.steps;
@@ -79,6 +162,12 @@ export default function PipelineRunPage({ variant }: { variant: Variant }) {
       />
 
       <div className="mx-auto max-w-5xl px-4 py-8 pb-28">
+        {isDemo && (
+          <div className="mb-4 rounded-sm border-2 border-hud-green bg-chrome px-4 py-2 text-center">
+            <span className="font-pixel text-[10px] text-hud-green">DEMO — simulated, no API calls</span>
+          </div>
+        )}
+
         {isCrossModel ? (
           <div className="mb-6 flex items-center justify-around gap-4 rounded-md border-2 border-chrome-border bg-chrome p-4">
             <div className="flex flex-col items-center gap-2">

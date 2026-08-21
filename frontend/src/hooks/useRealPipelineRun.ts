@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { WS_URL } from "../lib/api";
-import type { PipelineRunState, ScoreDimension, StepKind, StepState, TickerEntry } from "../types/domain";
+import type { PipelineRunState, StepKind, StepState, TickerEntry } from "../types/domain";
+import { emptySteps, formatModelLabel, sleep, toScoreDimensions, withLog } from "../lib/pipelineRunShared";
 
 // Real backend delivers one complete result per round (not staged
 // prompt->generation->evaluation->critique->refinement events) — so real
@@ -9,41 +10,6 @@ import type { PipelineRunState, ScoreDimension, StepKind, StepState, TickerEntry
 // Used for all three real strategies — self_refine and prompt_optimization
 // judge themselves, cross_model sends a separate evaluator_provider/model
 // and a different model plays judge; the event shape is identical either way.
-const STEP_ORDER: StepKind[] = ["prompt", "generation", "evaluation", "critique"];
-
-const DIMENSION_LABELS: Record<string, string> = {
-  relevance: "Relevance",
-  coherence: "Coherence",
-  completeness: "Completeness",
-  conciseness: "Conciseness",
-  accuracy: "Accuracy",
-  creativity: "Creativity",
-};
-
-function toScoreDimensions(dimensionScores: Record<string, number>): ScoreDimension[] {
-  return Object.entries(dimensionScores).map(([key, value]) => ({
-    label: DIMENSION_LABELS[key] ?? key,
-    value: Math.round(value * 10),
-  }));
-}
-
-function emptySteps(): StepState[] {
-  return STEP_ORDER.map((kind) => ({ kind, status: "locked", content: "" }));
-}
-
-function sleep(ms: number, isCancelled: () => boolean): Promise<void> {
-  return new Promise((resolve) => {
-    const t = setTimeout(resolve, ms);
-    if (isCancelled()) clearTimeout(t);
-  });
-}
-
-let logSeq = 0;
-
-function withLog(s: PipelineRunState, text: string, tone: TickerEntry["tone"] = "info"): PipelineRunState {
-  const entry: TickerEntry = { id: `${Date.now()}-${logSeq++}`, text, tone };
-  return { ...s, tickerLog: [...s.tickerLog.slice(-39), entry] };
-}
 
 interface RealIterationEvent {
   type: "iteration";
@@ -78,6 +44,10 @@ interface Options {
   // cross_model only — a separate judge model. Ignored otherwise.
   evaluatorProvider?: string;
   evaluatorModel?: string;
+  // BYOK — sent once with the start request, never stored (see
+  // ModelConfig.api_key server-side). Omitted entirely for real/demo runs.
+  apiKey?: string;
+  evaluatorApiKey?: string;
 }
 
 export function useRealPipelineRun({
@@ -88,6 +58,8 @@ export function useRealPipelineRun({
   maxRounds,
   evaluatorProvider,
   evaluatorModel,
+  apiKey,
+  evaluatorApiKey,
 }: Options) {
   const [state, setState] = useState<PipelineRunState>({
     round: 1,
@@ -101,9 +73,9 @@ export function useRealPipelineRun({
     tickerLog: [],
   });
   const [error, setError] = useState<string | null>(null);
-  const [generatorLabel, setGeneratorLabel] = useState(`${provider}/${model}`);
+  const [generatorLabel, setGeneratorLabel] = useState(formatModelLabel(provider, model));
   const [evaluatorLabel, setEvaluatorLabel] = useState(
-    evaluatorProvider && evaluatorModel ? `${evaluatorProvider}/${evaluatorModel}` : "",
+    evaluatorProvider && evaluatorModel ? formatModelLabel(evaluatorProvider, evaluatorModel) : "",
   );
 
   useEffect(() => {
@@ -124,7 +96,7 @@ export function useRealPipelineRun({
     // Updated from the "status" ws frame — the generatorLabel *state* is
     // one render behind inside this closure, so track it locally for
     // ticker text instead of reading the stale outer variable.
-    let activeLabel = `${provider}/${model}`;
+    let activeLabel = formatModelLabel(provider, model);
 
     const timer = setInterval(() => {
       if (cancelled()) return;
@@ -243,6 +215,8 @@ export function useRealPipelineRun({
           ...(evaluatorProvider && evaluatorModel
             ? { evaluator_provider: evaluatorProvider, evaluator_model: evaluatorModel }
             : {}),
+          ...(apiKey ? { generator_api_key: apiKey } : {}),
+          ...(evaluatorApiKey ? { evaluator_api_key: evaluatorApiKey } : {}),
           temperature: 0.7,
           max_tokens: 1024,
           max_iterations: maxRounds,
@@ -313,7 +287,7 @@ export function useRealPipelineRun({
       ws.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prompt, strategy, provider, model, maxRounds, evaluatorProvider, evaluatorModel]);
+  }, [prompt, strategy, provider, model, maxRounds, evaluatorProvider, evaluatorModel, apiKey, evaluatorApiKey]);
 
   return { state, error, generatorLabel, evaluatorLabel };
 }

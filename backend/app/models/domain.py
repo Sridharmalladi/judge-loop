@@ -40,12 +40,17 @@ class RunStatus(str, Enum):
 # ── Value objects (small, immutable pieces of data) ──
 
 class ModelConfig(BaseModel):
-    """Everything needed to call a specific model. 
+    """Everything needed to call a specific model.
     Think of this as the "address + instructions" for one LLM."""
     provider: ModelProvider
     model_name: str
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     max_tokens: int = Field(default=1024, ge=1, le=4096)
+    # BYOK — a caller-supplied key, used for exactly this run instead of the
+    # server's own configured key. exclude=True is load-bearing: RunStore
+    # writes RefinementRun.model_dump_json() straight to a plaintext file on
+    # disk (see storage/runs.py), and this field must never land there.
+    api_key: Optional[str] = Field(default=None, exclude=True, repr=False)
 
     @property
     def display_name(self) -> str:

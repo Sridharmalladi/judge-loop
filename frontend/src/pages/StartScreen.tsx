@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import TrackSelectCard from "../components/TrackSelectCard";
 import { DEMO_PROMPTS } from "../hooks/mockContent";
 import { useLiveModels } from "../hooks/useLiveModels";
-import type { RunMode } from "../types/domain";
+import { useByokKeys } from "../hooks/useByokKeys";
+import { DEMO_CATALOG } from "../lib/demoContent";
+import type { AvailableModelsResponse } from "../lib/api";
+import type { RunMode, RunSource } from "../types/domain";
 
 const ROUTES: Record<RunMode, string> = {
   self_refine: "/run/self-refine",
@@ -11,14 +14,41 @@ const ROUTES: Record<RunMode, string> = {
   prompt_optimization: "/run/prompt-opt",
 };
 
+const SOURCE_LABEL: Record<RunSource, string> = { byok: "BYOK", demo: "DEMO", real: "REAL" };
+const SOURCE_ACCENT: Record<RunSource, string> = {
+  byok: "var(--color-hud-cyan)",
+  demo: "var(--color-hud-green)",
+  real: "var(--color-hud-pink)",
+};
+
+const KEY_SIGNUP_URL: Record<string, string> = {
+  groq: "https://console.groq.com/keys",
+  openrouter: "https://openrouter.ai/keys",
+  gemini: "https://aistudio.google.com/apikey",
+  huggingface: "https://huggingface.co/settings/tokens",
+};
+
 export default function StartScreen() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const source = (location.state as { source?: RunSource } | null)?.source;
+
+  useEffect(() => {
+    if (!source) navigate("/");
+  }, [source, navigate]);
+
   const [prompt, setPrompt] = useState(DEMO_PROMPTS[0]);
-  const { data: modelsData, error: modelsError, loading: modelsLoading } = useLiveModels();
+  const live = useLiveModels(source === "byok" ? "byok" : "real");
+  const isDemo = source === "demo";
+  const modelsData: AvailableModelsResponse | null = isDemo ? DEMO_CATALOG : live.data;
+  const modelsError = isDemo ? null : live.error;
+  const modelsLoading = isDemo ? false : live.loading;
+
   const [provider, setProvider] = useState("");
   const [model, setModel] = useState("");
   const [evaluatorProvider, setEvaluatorProvider] = useState("");
   const [evaluatorModel, setEvaluatorModel] = useState("");
+  const { keys: byokKeys, setKey: setByokKey } = useByokKeys();
 
   useEffect(() => {
     if (modelsData && modelsData.providers.length > 0 && !provider) {
@@ -35,18 +65,25 @@ export default function StartScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelsData]);
 
-  const canRunReal = Boolean(provider && model && !modelsError);
-  const canRunArena = Boolean(canRunReal && evaluatorProvider && evaluatorModel);
+  const hasGeneratorKey = source !== "byok" || Boolean(byokKeys[provider]);
+  const hasEvaluatorKey = source !== "byok" || Boolean(byokKeys[evaluatorProvider]);
+  const canRunReal = isDemo || Boolean(provider && model && !modelsError && hasGeneratorKey);
+  const canRunArena = isDemo || Boolean(canRunReal && evaluatorProvider && evaluatorModel && hasEvaluatorKey);
+
+  if (!source) return null;
 
   function go(mode: RunMode) {
     const cleanPrompt = prompt.trim() || DEMO_PROMPTS[0];
+    const base = { prompt: cleanPrompt, provider, model, source };
+    const withKey = source === "byok" ? { generatorApiKey: byokKeys[provider] } : {};
     if (mode === "cross_model") {
       if (!canRunArena) return;
-      navigate(ROUTES[mode], { state: { prompt: cleanPrompt, provider, model, evaluatorProvider, evaluatorModel } });
+      const evalKey = source === "byok" ? { evaluatorApiKey: byokKeys[evaluatorProvider] } : {};
+      navigate(ROUTES[mode], { state: { ...base, ...withKey, evaluatorProvider, evaluatorModel, ...evalKey } });
       return;
     }
     if (!canRunReal) return;
-    navigate(ROUTES[mode], { state: { prompt: cleanPrompt, provider, model } });
+    navigate(ROUTES[mode], { state: { ...base, ...withKey } });
   }
 
   return (
@@ -58,6 +95,37 @@ export default function StartScreen() {
         <p className="mt-3 text-sm text-hud-text-dim">
           Pick a track. Watch an LLM improve its own answer, lap after lap.
         </p>
+        <div className="mt-4 flex items-center justify-center gap-2">
+          <span
+            className="rounded-sm border-2 px-3 py-1 font-pixel text-[10px]"
+            style={{ borderColor: SOURCE_ACCENT[source], color: SOURCE_ACCENT[source] }}
+          >
+            {SOURCE_LABEL[source]} MODE
+          </span>
+          <button
+            onClick={() => navigate("/")}
+            className="text-[11px] text-hud-text-dim underline hover:text-hud-cyan"
+          >
+            change
+          </button>
+        </div>
+        {isDemo && (
+          <p className="mt-3 text-xs text-hud-green">
+            Simulated — no API calls, always completes. Great for exploring the UI risk-free.
+          </p>
+        )}
+        {source === "byok" && (
+          <p className="mt-3 text-xs text-hud-cyan">
+            Your key is used only for this run and kept in this browser tab — never sent anywhere but this app,
+            never stored on the server.
+          </p>
+        )}
+        {source === "real" && (
+          <p className="mt-3 text-xs text-hud-pink">
+            Uses this app's shared free-tier keys — everyone visiting shares the same quota, so you may hit a rate
+            limit. That's expected, not a bug.
+          </p>
+        )}
       </header>
 
       <div className="mx-auto mb-6 max-w-2xl rounded-md border-2 border-chrome-border bg-chrome p-4">
@@ -88,41 +156,51 @@ export default function StartScreen() {
         {modelsLoading && <p className="text-sm text-hud-text-dim">Connecting to backend…</p>}
         {modelsError && (
           <p className="text-sm text-hud-pink">
-            Backend unreachable at localhost:8000 — is it running? All three tracks call it for real.
+            Backend unreachable at localhost:8000 — is it running? {SOURCE_LABEL[source]} mode needs it.
           </p>
         )}
         {modelsData && modelsData.providers.length === 0 && (
           <p className="text-sm text-hud-pink">Backend has no provider API keys configured.</p>
         )}
         {modelsData && modelsData.providers.length > 0 && (
-          <div className="grid grid-cols-2 gap-3">
-            <select
-              value={provider}
-              onChange={(e) => {
-                const p = e.target.value;
-                setProvider(p);
-                setModel(modelsData.models[p]?.[0] ?? "");
-              }}
-              className="rounded-sm border-2 border-chrome-border bg-chrome-dark p-2 font-mono text-sm text-hud-text outline-none focus:border-hud-green"
-            >
-              {modelsData.providers.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-            <select
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className="rounded-sm border-2 border-chrome-border bg-chrome-dark p-2 font-mono text-sm text-hud-text outline-none focus:border-hud-green"
-            >
-              {(modelsData.models[provider] ?? []).map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </div>
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <select
+                value={provider}
+                onChange={(e) => {
+                  const p = e.target.value;
+                  setProvider(p);
+                  setModel(modelsData.models[p]?.[0] ?? "");
+                }}
+                className="rounded-sm border-2 border-chrome-border bg-chrome-dark p-2 font-mono text-sm text-hud-text outline-none focus:border-hud-green"
+              >
+                {modelsData.providers.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                className="rounded-sm border-2 border-chrome-border bg-chrome-dark p-2 font-mono text-sm text-hud-text outline-none focus:border-hud-green"
+              >
+                {(modelsData.models[provider] ?? []).map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {source === "byok" && (
+              <ApiKeyField
+                provider={provider}
+                value={byokKeys[provider] ?? ""}
+                onChange={(v) => setByokKey(provider, v)}
+                accent="var(--color-hud-green)"
+              />
+            )}
+          </>
         )}
       </div>
 
@@ -159,6 +237,14 @@ export default function StartScreen() {
               ))}
             </select>
           </div>
+          {source === "byok" && (
+            <ApiKeyField
+              provider={evaluatorProvider}
+              value={byokKeys[evaluatorProvider] ?? ""}
+              onChange={(v) => setByokKey(evaluatorProvider, v)}
+              accent="var(--color-hud-pink)"
+            />
+          )}
         </div>
       )}
 
@@ -170,7 +256,7 @@ export default function StartScreen() {
           icon={<CarIcon />}
           onSelect={() => go("self_refine")}
           disabled={!canRunReal}
-          disabledReason={modelsError ? "Backend unreachable" : "Waiting on model list from backend…"}
+          disabledReason={disabledReason(source, modelsError, hasGeneratorKey)}
         />
         <TrackSelectCard
           title="CROSS-MODEL"
@@ -179,7 +265,7 @@ export default function StartScreen() {
           icon={<FlagIcon />}
           onSelect={() => go("cross_model")}
           disabled={!canRunArena}
-          disabledReason={modelsError ? "Backend unreachable" : "Waiting on model list from backend…"}
+          disabledReason={disabledReason(source, modelsError, hasGeneratorKey && hasEvaluatorKey)}
         />
         <TrackSelectCard
           title="PROMPT OPT"
@@ -188,7 +274,7 @@ export default function StartScreen() {
           icon={<GearIcon />}
           onSelect={() => go("prompt_optimization")}
           disabled={!canRunReal}
-          disabledReason={modelsError ? "Backend unreachable" : "Waiting on model list from backend…"}
+          disabledReason={disabledReason(source, modelsError, hasGeneratorKey)}
         />
       </div>
 
@@ -196,8 +282,59 @@ export default function StartScreen() {
         className="mt-10 text-center text-[11px] text-hud-text-dim"
         style={{ textShadow: "0 0 6px var(--color-chrome-dark), 0 0 6px var(--color-chrome-dark)" }}
       >
-        All three tracks call real models through your backend — no simulated runs.
+        {isDemo
+          ? "Demo mode — every response and score below is simulated, no API calls are made."
+          : source === "byok"
+            ? "BYOK mode — calls run with your own API key(s), sent only for the run you start."
+            : "Real mode — calls run through this app's shared backend keys."}
       </p>
+    </div>
+  );
+}
+
+function disabledReason(source: RunSource, modelsError: string | null, hasKey: boolean): string {
+  if (source === "byok" && !hasKey) return "Enter your API key above";
+  if (modelsError) return "Backend unreachable";
+  return "Waiting on model list from backend…";
+}
+
+function ApiKeyField({
+  provider,
+  value,
+  onChange,
+  accent,
+}: {
+  provider: string;
+  value: string;
+  onChange: (v: string) => void;
+  accent: string;
+}) {
+  if (!provider) return null;
+  const signupUrl = KEY_SIGNUP_URL[provider];
+  return (
+    <div className="mt-3">
+      <div className="mb-1 flex items-center justify-between">
+        <label className="text-xs uppercase tracking-wide text-hud-text-dim">Your {provider} API key</label>
+        {signupUrl && (
+          <a
+            href={signupUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[11px] text-hud-text-dim underline hover:text-hud-cyan"
+          >
+            get one free →
+          </a>
+        )}
+      </div>
+      <input
+        type="password"
+        autoComplete="off"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={`Paste your ${provider} key…`}
+        className="w-full rounded-sm border-2 bg-chrome-dark p-2 font-mono text-sm text-hud-text outline-none"
+        style={{ borderColor: value ? accent : "var(--color-chrome-border)" }}
+      />
     </div>
   );
 }

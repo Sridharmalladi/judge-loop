@@ -1,14 +1,21 @@
 import { useEffect, useState } from "react";
-import { getModels, type AvailableModelsResponse } from "../lib/api";
+import { getModels, getModelCatalog, type AvailableModelsResponse } from "../lib/api";
 
-export function useLiveModels() {
+// `real` mode wants the server's own available models (reliability-ranked,
+// only what the server has keys for). `byok` mode wants the full catalog —
+// the server's key situation is irrelevant when the caller brings their own.
+export function useLiveModels(source: "real" | "byok" = "real") {
   const [data, setData] = useState<AvailableModelsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    getModels()
+    setLoading(true);
+    setData(null);
+    setError(null);
+    const fetcher = source === "byok" ? getModelCatalog : getModels;
+    fetcher()
       .then((d) => {
         if (!cancelled) {
           setData(d);
@@ -24,7 +31,7 @@ export function useLiveModels() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [source]);
 
   return { data, error, loading };
 }

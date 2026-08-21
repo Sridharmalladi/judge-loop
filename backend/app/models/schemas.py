@@ -19,6 +19,10 @@ class StartRunRequest(BaseModel):
     generator_model: str
     evaluator_provider: Optional[ModelProvider] = None
     evaluator_model: Optional[str] = None
+    # BYOK — supplied by the client for exactly this run, never persisted
+    # (see ModelConfig.api_key). None means "use the server's own key".
+    generator_api_key: Optional[str] = None
+    evaluator_api_key: Optional[str] = None
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     max_tokens: int = Field(default=1024, ge=64, le=4096)
     max_iterations: int = Field(default=5, ge=1, le=10)

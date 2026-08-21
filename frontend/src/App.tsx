@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import ParallaxBackground from "./components/ParallaxBackground";
 import TopBar from "./components/TopBar";
+import LandingPage from "./pages/LandingPage";
 import StartScreen from "./pages/StartScreen";
 import PipelineRunPage from "./pages/PipelineRunPage";
 import { useTheme } from "./hooks/useTheme";
@@ -17,7 +18,8 @@ export default function App() {
       <div className="relative z-10 min-h-screen">
         <TopBar soundOn={soundOn} onToggleSound={toggleSound} theme={theme} onToggleTheme={toggleTheme} />
         <Routes>
-          <Route path="/" element={<StartScreen />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/start" element={<StartScreen />} />
           <Route path="/run/self-refine" element={<PipelineRunPage variant="self_refine" />} />
           <Route path="/run/prompt-opt" element={<PipelineRunPage variant="prompt_optimization" />} />
           <Route path="/run/arena" element={<PipelineRunPage variant="cross_model" />} />

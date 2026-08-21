@@ -15,3 +15,11 @@ export async function getModels(): Promise<AvailableModelsResponse> {
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
+
+// Every provider that CAN be used with a bring-your-own-key, regardless of
+// whether this server itself has a key configured — powers the BYOK picker.
+export async function getModelCatalog(): Promise<AvailableModelsResponse> {
+  const res = await fetch(`${API_BASE}/api/models/catalog`);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}

@@ -14,7 +14,7 @@ from ..models.schemas import (
 from ..models.domain import (
     RefinementRun, ModelConfig, EvaluationCriteria, RunStatus,
 )
-from ..adapters.registry import registry
+from ..adapters.registry import registry, FULL_MODEL_CATALOG
 from ..engine.refinement import run_refinement
 from ..engine.reliability import tracker as reliability_tracker
 from ..storage.runs import run_store
@@ -24,7 +24,7 @@ router = APIRouter(prefix="/api", tags=["refinement"])
 
 @router.get("/models", response_model=AvailableModelsResponse)
 async def list_models():
-    """What models can the user pick from?"""
+    """What models can the user pick from, using the SERVER's own keys."""
     models = registry.get_available_models()
     if "ollama" in models:
         # Static providers ship a fixed catalog — Ollama's is whatever the
@@ -43,6 +43,19 @@ async def list_models():
     )
 
 
+@router.get("/models/catalog", response_model=AvailableModelsResponse)
+async def model_catalog():
+    """Every provider that CAN be used with a bring-your-own-key, regardless
+    of whether the server itself has a key configured for it. Powers the
+    BYOK picker — reliability ranking doesn't apply since it's the caller's
+    own key, not the server's, whose health this run has no track record of.
+    """
+    return AvailableModelsResponse(
+        providers=list(FULL_MODEL_CATALOG.keys()),
+        models=FULL_MODEL_CATALOG,
+    )
+
+
 @router.post("/runs", response_model=RunDetail)
 async def start_run(req: StartRunRequest):
     """Start a refinement run (synchronous — use WebSocket for streaming)."""
@@ -51,6 +64,7 @@ async def start_run(req: StartRunRequest):
         model_name=req.generator_model,
         temperature=req.temperature,
         max_tokens=req.max_tokens,
+        api_key=req.generator_api_key,
     )
 
     evaluator_config = None
@@ -59,6 +73,7 @@ async def start_run(req: StartRunRequest):
             provider=req.evaluator_provider,
             model_name=req.evaluator_model,
             temperature=0.3,  # Low temp for consistent judging
+            api_key=req.evaluator_api_key,
         )
 
     criteria = EvaluationCriteria(
