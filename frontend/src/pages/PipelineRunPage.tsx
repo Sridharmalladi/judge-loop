@@ -8,11 +8,15 @@ import PixelCharacter from "../components/PixelCharacter";
 import SpeechBubble from "../components/SpeechBubble";
 import Leaderboard from "../components/Leaderboard";
 import { useRealPipelineRun } from "../hooks/useRealPipelineRun";
-import { useDemoPipelineRun } from "../hooks/useDemoPipelineRun";
 import { stepsToCharacterState, stepsToJudgeState } from "../lib/characterState";
-import type { PipelineRunState, RunSource } from "../types/domain";
+import type { PipelineRunState } from "../types/domain";
 
 type Variant = "self_refine" | "prompt_optimization" | "cross_model";
+
+// 3 rounds, not 4 — each round is 1-2 real API calls, and this is the
+// single biggest lever on token spend short of the user cutting a run
+// short themselves. Still enough rounds to show a real refine trajectory.
+const MAX_ROUNDS = 3;
 
 interface RunLocationState {
   prompt?: string;
@@ -20,18 +24,11 @@ interface RunLocationState {
   model?: string;
   evaluatorProvider?: string;
   evaluatorModel?: string;
-  source?: RunSource;
   generatorApiKey?: string;
   evaluatorApiKey?: string;
 }
 
 export default function PipelineRunPage({ variant }: { variant: Variant }) {
-  const location = useLocation();
-  const source = (location.state as RunLocationState | null)?.source ?? "real";
-  return source === "demo" ? <DemoRun variant={variant} /> : <RealRun variant={variant} />;
-}
-
-function RealRun({ variant }: { variant: Variant }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { prompt, provider, model, evaluatorProvider, evaluatorModel, generatorApiKey, evaluatorApiKey } =
@@ -49,7 +46,7 @@ function RealRun({ variant }: { variant: Variant }) {
     strategy: variant,
     provider: provider ?? "",
     model: model ?? "",
-    maxRounds: 4,
+    maxRounds: MAX_ROUNDS,
     evaluatorProvider,
     evaluatorModel,
     apiKey: generatorApiKey,
@@ -70,44 +67,6 @@ function RealRun({ variant }: { variant: Variant }) {
   );
 }
 
-function DemoRun({ variant }: { variant: Variant }) {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { prompt, provider, model, evaluatorProvider, evaluatorModel } =
-    (location.state as RunLocationState | null) ?? {};
-  const isCrossModel = variant === "cross_model";
-  const hasJudge = Boolean(evaluatorProvider && evaluatorModel);
-
-  useEffect(() => {
-    if (!prompt || !provider || !model) navigate("/");
-    else if (isCrossModel && !hasJudge) navigate("/");
-  }, [prompt, provider, model, isCrossModel, hasJudge, navigate]);
-
-  const { state, error, generatorLabel, evaluatorLabel } = useDemoPipelineRun({
-    prompt: prompt ?? "",
-    strategy: variant,
-    provider: provider ?? "",
-    model: model ?? "",
-    maxRounds: 4,
-    evaluatorProvider,
-    evaluatorModel,
-  });
-
-  if (!prompt || !provider || !model || (isCrossModel && !hasJudge)) return null;
-
-  return (
-    <RunView
-      variant={variant}
-      provider={provider}
-      state={state}
-      error={error}
-      generatorLabel={generatorLabel}
-      evaluatorLabel={evaluatorLabel}
-      isDemo
-    />
-  );
-}
-
 function RunView({
   variant,
   provider,
@@ -115,7 +74,6 @@ function RunView({
   error,
   generatorLabel,
   evaluatorLabel,
-  isDemo,
 }: {
   variant: Variant;
   provider: string;
@@ -123,7 +81,6 @@ function RunView({
   error: string | null;
   generatorLabel: string;
   evaluatorLabel: string;
-  isDemo?: boolean;
 }) {
   const navigate = useNavigate();
   const isCrossModel = variant === "cross_model";
@@ -162,12 +119,6 @@ function RunView({
       />
 
       <div className="mx-auto max-w-5xl px-4 py-8 pb-28">
-        {isDemo && (
-          <div className="mb-4 rounded-sm border-2 border-hud-green bg-chrome px-4 py-2 text-center">
-            <span className="font-pixel text-[10px] text-hud-green">DEMO — simulated, no API calls</span>
-          </div>
-        )}
-
         {isCrossModel ? (
           <div className="mb-6 flex items-center justify-around gap-4 rounded-md border-2 border-chrome-border bg-chrome p-4">
             <div className="flex flex-col items-center gap-2">

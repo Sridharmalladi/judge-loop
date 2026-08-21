@@ -218,7 +218,7 @@ export function useRealPipelineRun({
           ...(apiKey ? { generator_api_key: apiKey } : {}),
           ...(evaluatorApiKey ? { evaluator_api_key: evaluatorApiKey } : {}),
           temperature: 0.7,
-          max_tokens: 1024,
+          max_tokens: 640,
           max_iterations: maxRounds,
           convergence_threshold: 0.5,
         }),

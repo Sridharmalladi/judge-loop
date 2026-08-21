@@ -10,16 +10,10 @@ const TABS: { id: RunSource; label: string; accent: string; blurb: string }[] = 
     blurb: "Bring your own free API key(s). Runs on your quota, not shared — you control the rate limits.",
   },
   {
-    id: "demo",
-    label: "DEMO",
-    accent: "var(--color-hud-green)",
-    blurb: "Fully simulated, zero API calls. Every mode completes instantly and reliably — the best way to explore the UI.",
-  },
-  {
     id: "real",
     label: "REAL",
     accent: "var(--color-hud-pink)",
-    blurb: "Uses this app's own shared free-tier keys. Everyone who visits shares the same quota, so you may hit rate limits — that's expected, not a bug.",
+    blurb: "Uses this app's own backend keys — no setup needed. Pick a 🔥 model for the most reliable results.",
   },
 ];
 

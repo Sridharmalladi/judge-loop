@@ -8,6 +8,7 @@ export const WS_URL = API_BASE.replace(/^http/, "ws") + "/ws/refine";
 export interface AvailableModelsResponse {
   providers: string[];
   models: Record<string, string[]>;
+  featured: string[];
 }
 
 export async function getModels(): Promise<AvailableModelsResponse> {

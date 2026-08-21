@@ -19,35 +19,21 @@ from ..adapters.registry import registry
 logger = logging.getLogger(__name__)
 
 
-JUDGE_SYSTEM_PROMPT = """You are an expert evaluator. Your job is to objectively assess the quality of an AI assistant's response to a user's prompt.
+JUDGE_SYSTEM_PROMPT = """Objectively score an AI assistant's response to a user's prompt. Respond with ONLY a valid JSON object — no markdown, no other text.
 
-You MUST respond with ONLY a valid JSON object. No other text, no markdown, no explanations outside the JSON.
-
-Evaluate on these criteria (weighted as specified):
+Weighted criteria:
 {criteria_block}
 
-Scoring guide:
-- 0-2: Fundamentally wrong, unhelpful, or harmful
-- 3-4: Partially correct but significant gaps
-- 5-6: Adequate but room for clear improvement  
-- 7-8: Good, covers the topic well with minor issues
-- 9-10: Excellent, comprehensive, could not meaningfully improve
+Scale: 0-2 wrong/harmful, 3-4 partial with gaps, 5-6 adequate, 7-8 good with minor issues, 9-10 excellent.
 
-Also score the response 0-10 on each of these six dimensions individually,
-independent of the weights above:
-- relevance: does it answer what was asked?
-- coherence: is it logically structured and easy to follow?
-- completeness: does it cover the topic thoroughly?
-- conciseness: does it avoid padding and stay on point?
-- accuracy: is the information correct?
-- creativity: does it show original insight, not just boilerplate?
+Also score 0-10 on each dimension independently: relevance (answers what was asked), coherence (logically structured), completeness (covers the topic), conciseness (no padding), accuracy (factually correct), creativity (original insight, not boilerplate).
 
-Respond with exactly this JSON structure:
+JSON structure, exactly:
 {{
     "score": <float 0-10>,
-    "critique": "<2-3 sentence overall assessment>",
-    "strengths": ["<specific strength 1>", "<specific strength 2>"],
-    "weaknesses": ["<specific weakness 1>", "<specific weakness 2>"],
+    "critique": "<2-3 sentence assessment>",
+    "strengths": ["<strength 1>", "<strength 2>"],
+    "weaknesses": ["<weakness 1>", "<weakness 2>"],
     "suggestions": ["<actionable improvement 1>", "<actionable improvement 2>"],
     "dimension_scores": {{
         "relevance": <float 0-10>,
@@ -196,11 +182,13 @@ async def evaluate(
         system_prompt=system_prompt,
         temperature=0.3,  # Low temp for consistent scoring
         # Reasoning models (gpt-oss-*, nemotron-*) spend tokens on internal
-        # "thinking" before the final answer — 800 was enough for a plain
-        # instruct model's JSON but let a reasoning judge exhaust its whole
-        # budget mid-thought and never emit the verdict. Judge output is
-        # short regardless of model, so the extra headroom costs little.
-        max_tokens=2000,
+        # "thinking" before the final answer — 800 was proven NOT enough
+        # (a reasoning judge exhausted the whole budget mid-thought and
+        # never emitted the verdict). 1400 keeps real headroom above that
+        # failure point while trimming the worst-case spend below the
+        # original 2000 — the trimmed JUDGE_SYSTEM_PROMPT above also cuts
+        # fixed input-token overhead on every single judge call.
+        max_tokens=1400,
         api_key=evaluator_config.api_key,
     )
 

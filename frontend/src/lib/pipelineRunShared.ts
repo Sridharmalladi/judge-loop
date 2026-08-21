@@ -1,10 +1,8 @@
 import type { PipelineRunState, ScoreDimension, StepKind, StepState, TickerEntry } from "../types/domain";
 
-// Shared by useRealPipelineRun and useDemoPipelineRun — pure helpers only.
-// The stateful effect/closure logic stays independent per hook on purpose
-// (see useRealPipelineRun's "local closures, not refs" note about
-// StrictMode's double-invoke) rather than risking a shared abstraction
-// there.
+// Pure helpers for useRealPipelineRun's staged reveal — split out from the
+// stateful hook so the effect/closure logic (see its "local closures, not
+// refs" note about StrictMode's double-invoke) stays easy to read on its own.
 export const STEP_ORDER: StepKind[] = ["prompt", "generation", "evaluation", "critique"];
 
 export const DIMENSION_LABELS: Record<string, string> = {

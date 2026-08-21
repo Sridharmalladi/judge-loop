@@ -33,5 +33,16 @@ class ReliabilityTracker:
         original ordering survives until real call data pulls things apart."""
         return sorted(models, key=lambda m: self.score(provider, m), reverse=True)
 
+    def provider_score(self, provider: str, models: list[str]) -> float:
+        """Aggregate success rate across every model tried for a provider.
+        Requires a real sample (>=3 calls) before counting as "proven" —
+        one lucky or unlucky call shouldn't flip the 🔥 badge."""
+        s = sum(self._success.get((provider, m), 0) for m in models)
+        f = sum(self._failure.get((provider, m), 0) for m in models)
+        total = s + f
+        if total < 3:
+            return 0.5
+        return s / total
+
 
 tracker = ReliabilityTracker()

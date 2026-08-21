@@ -4,8 +4,6 @@ import TrackSelectCard from "../components/TrackSelectCard";
 import { DEMO_PROMPTS } from "../hooks/mockContent";
 import { useLiveModels } from "../hooks/useLiveModels";
 import { useByokKeys } from "../hooks/useByokKeys";
-import { DEMO_CATALOG } from "../lib/demoContent";
-import type { AvailableModelsResponse } from "../lib/api";
 import type { RunMode, RunSource } from "../types/domain";
 
 const ROUTES: Record<RunMode, string> = {
@@ -14,10 +12,9 @@ const ROUTES: Record<RunMode, string> = {
   prompt_optimization: "/run/prompt-opt",
 };
 
-const SOURCE_LABEL: Record<RunSource, string> = { byok: "BYOK", demo: "DEMO", real: "REAL" };
+const SOURCE_LABEL: Record<RunSource, string> = { byok: "BYOK", real: "REAL" };
 const SOURCE_ACCENT: Record<RunSource, string> = {
   byok: "var(--color-hud-cyan)",
-  demo: "var(--color-hud-green)",
   real: "var(--color-hud-pink)",
 };
 
@@ -27,6 +24,10 @@ const KEY_SIGNUP_URL: Record<string, string> = {
   gemini: "https://aistudio.google.com/apikey",
   huggingface: "https://huggingface.co/settings/tokens",
 };
+
+// Keeps input tokens (and therefore cost) predictable — this app's prompts
+// are short asks ("explain X", "write a description for Y"), not essays.
+const PROMPT_MAX_CHARS = 500;
 
 export default function StartScreen() {
   const navigate = useNavigate();
@@ -38,11 +39,9 @@ export default function StartScreen() {
   }, [source, navigate]);
 
   const [prompt, setPrompt] = useState(DEMO_PROMPTS[0]);
-  const live = useLiveModels(source === "byok" ? "byok" : "real");
-  const isDemo = source === "demo";
-  const modelsData: AvailableModelsResponse | null = isDemo ? DEMO_CATALOG : live.data;
-  const modelsError = isDemo ? null : live.error;
-  const modelsLoading = isDemo ? false : live.loading;
+  const { data: modelsData, error: modelsError, loading: modelsLoading } = useLiveModels(
+    source === "byok" ? "byok" : "real",
+  );
 
   const [provider, setProvider] = useState("");
   const [model, setModel] = useState("");
@@ -65,16 +64,17 @@ export default function StartScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelsData]);
 
+  const featured = modelsData?.featured ?? [];
   const hasGeneratorKey = source !== "byok" || Boolean(byokKeys[provider]);
   const hasEvaluatorKey = source !== "byok" || Boolean(byokKeys[evaluatorProvider]);
-  const canRunReal = isDemo || Boolean(provider && model && !modelsError && hasGeneratorKey);
-  const canRunArena = isDemo || Boolean(canRunReal && evaluatorProvider && evaluatorModel && hasEvaluatorKey);
+  const canRunReal = Boolean(provider && model && !modelsError && hasGeneratorKey);
+  const canRunArena = Boolean(canRunReal && evaluatorProvider && evaluatorModel && hasEvaluatorKey);
 
   if (!source) return null;
 
   function go(mode: RunMode) {
-    const cleanPrompt = prompt.trim() || DEMO_PROMPTS[0];
-    const base = { prompt: cleanPrompt, provider, model, source };
+    const cleanPrompt = prompt.trim().slice(0, PROMPT_MAX_CHARS) || DEMO_PROMPTS[0];
+    const base = { prompt: cleanPrompt, provider, model };
     const withKey = source === "byok" ? { generatorApiKey: byokKeys[provider] } : {};
     if (mode === "cross_model") {
       if (!canRunArena) return;
@@ -109,11 +109,6 @@ export default function StartScreen() {
             change
           </button>
         </div>
-        {isDemo && (
-          <p className="mt-3 text-xs text-hud-green">
-            Simulated — no API calls, always completes. Great for exploring the UI risk-free.
-          </p>
-        )}
         {source === "byok" && (
           <p className="mt-3 text-xs text-hud-cyan">
             Your key is used only for this run and kept in this browser tab — never sent anywhere but this app,
@@ -122,17 +117,22 @@ export default function StartScreen() {
         )}
         {source === "real" && (
           <p className="mt-3 text-xs text-hud-pink">
-            Uses this app's shared free-tier keys — everyone visiting shares the same quota, so you may hit a rate
-            limit. That's expected, not a bug.
+            Uses this app's own backend keys — no setup needed. 🔥 marks the models most likely to work right now.
           </p>
         )}
       </header>
 
       <div className="mx-auto mb-6 max-w-2xl rounded-md border-2 border-chrome-border bg-chrome p-4">
-        <label className="mb-2 block text-xs uppercase tracking-wide text-hud-text-dim">Your prompt</label>
+        <div className="mb-2 flex items-baseline justify-between">
+          <label className="block text-xs uppercase tracking-wide text-hud-text-dim">Your prompt</label>
+          <span className="text-[11px] text-hud-text-dim">
+            {prompt.length}/{PROMPT_MAX_CHARS}
+          </span>
+        </div>
         <textarea
           value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
+          onChange={(e) => setPrompt(e.target.value.slice(0, PROMPT_MAX_CHARS))}
+          maxLength={PROMPT_MAX_CHARS}
           rows={3}
           className="w-full resize-none rounded-sm border-2 border-chrome-border bg-chrome-dark p-3 font-mono text-sm text-hud-text outline-none focus:border-hud-green"
         />
@@ -176,6 +176,7 @@ export default function StartScreen() {
               >
                 {modelsData.providers.map((p) => (
                   <option key={p} value={p}>
+                    {featured.includes(p) ? "🔥 " : ""}
                     {p}
                   </option>
                 ))}
@@ -221,6 +222,7 @@ export default function StartScreen() {
             >
               {modelsData.providers.map((p) => (
                 <option key={p} value={p}>
+                  {featured.includes(p) ? "🔥 " : ""}
                   {p}
                 </option>
               ))}
@@ -282,11 +284,9 @@ export default function StartScreen() {
         className="mt-10 text-center text-[11px] text-hud-text-dim"
         style={{ textShadow: "0 0 6px var(--color-chrome-dark), 0 0 6px var(--color-chrome-dark)" }}
       >
-        {isDemo
-          ? "Demo mode — every response and score below is simulated, no API calls are made."
-          : source === "byok"
-            ? "BYOK mode — calls run with your own API key(s), sent only for the run you start."
-            : "Real mode — calls run through this app's shared backend keys."}
+        {source === "byok"
+          ? "BYOK mode — calls run with your own API key(s), sent only for the run you start."
+          : "Real mode — calls run through this app's own backend keys."}
       </p>
     </div>
   );

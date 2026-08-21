@@ -13,7 +13,10 @@ from .domain import RefinementStrategy, ModelProvider
 
 class StartRunRequest(BaseModel):
     """Client sends this to kick off a refinement run."""
-    prompt: str = Field(min_length=1, max_length=5000)
+    # Kept short on purpose — this app's prompts are short asks, not essays,
+    # and every extra input token is repeated back into every later round's
+    # feedback-injection prompt (see SelfRefineStrategy.build_generation_prompt).
+    prompt: str = Field(min_length=1, max_length=500)
     strategy: RefinementStrategy
     generator_provider: ModelProvider
     generator_model: str
@@ -24,7 +27,7 @@ class StartRunRequest(BaseModel):
     generator_api_key: Optional[str] = None
     evaluator_api_key: Optional[str] = None
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
-    max_tokens: int = Field(default=1024, ge=64, le=4096)
+    max_tokens: int = Field(default=640, ge=64, le=4096)
     max_iterations: int = Field(default=5, ge=1, le=10)
     convergence_threshold: float = Field(default=0.5, ge=0.0, le=5.0)
     custom_criteria: Optional[str] = None
@@ -116,3 +119,6 @@ class AvailableModelsResponse(BaseModel):
     """What models the user can pick from (based on configured API keys)."""
     providers: list[str]
     models: dict[str, list[str]]  # provider → [model_names]
+    # Providers worth steering users toward — known-good or proven reliable
+    # by real call history. `providers` is already sorted featured-first.
+    featured: list[str] = []

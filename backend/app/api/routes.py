@@ -21,6 +21,12 @@ from ..storage.runs import run_store
 
 router = APIRouter(prefix="/api", tags=["refinement"])
 
+# Known-good right now (funded, real credit backing it) — gets the 🔥 badge
+# and sorts first immediately, rather than waiting for enough call history
+# to prove itself. Any other provider earns the same badge dynamically once
+# reliability_tracker.provider_score sees enough real traffic.
+FEATURED_PROVIDERS = {"openrouter"}
+
 
 @router.get("/models", response_model=AvailableModelsResponse)
 async def list_models():
@@ -37,9 +43,18 @@ async def list_models():
     # as the pre-selected default.
     models = {provider: reliability_tracker.sort_models(provider, ms) for provider, ms in models.items()}
 
+    providers = registry.get_available_providers()
+    featured = [
+        p for p in providers
+        if p in FEATURED_PROVIDERS or reliability_tracker.provider_score(p, models.get(p, [])) >= 0.75
+    ]
+    # Featured providers first; stable sort preserves relative order otherwise.
+    providers = sorted(providers, key=lambda p: p not in featured)
+
     return AvailableModelsResponse(
-        providers=registry.get_available_providers(),
+        providers=providers,
         models=models,
+        featured=featured,
     )
 
 
@@ -47,12 +62,16 @@ async def list_models():
 async def model_catalog():
     """Every provider that CAN be used with a bring-your-own-key, regardless
     of whether the server itself has a key configured for it. Powers the
-    BYOK picker — reliability ranking doesn't apply since it's the caller's
-    own key, not the server's, whose health this run has no track record of.
+    BYOK picker — the dynamic proven-reliability signal doesn't apply since
+    it's the caller's own key, not the server's, but the hardcoded
+    known-good set still does (the service itself is reliable regardless
+    of whose key is calling it).
     """
+    providers = sorted(FULL_MODEL_CATALOG.keys(), key=lambda p: p not in FEATURED_PROVIDERS)
     return AvailableModelsResponse(
-        providers=list(FULL_MODEL_CATALOG.keys()),
+        providers=providers,
         models=FULL_MODEL_CATALOG,
+        featured=[p for p in providers if p in FEATURED_PROVIDERS],
     )
 
 

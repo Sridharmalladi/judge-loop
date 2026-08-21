@@ -1,14 +1,19 @@
 """
-OPENROUTER ADAPTER — One key, many free models.
+OPENROUTER ADAPTER — One key, free models plus a couple of cheap paid ones.
 
 OpenRouter follows the OpenAI chat completions format and proxies to many
-underlying providers. Models suffixed ":free" cost nothing to call.
-Free tier: 20 requests/min, 50 requests/day (jumps to 1,000/day permanently
-after ever adding $10 credit — none of it has to be spent).
+underlying providers. Models suffixed ":free" cost nothing to call but share
+a tight rate limit (20/min, 50/day — 1,000/day after ever adding $10
+credit). The two non-free models listed first are paid — a few thousandths
+of a cent per call — and have their own separate, far higher limit tied to
+account balance rather than the free-tier's shared pool. They're first in
+the list (and therefore the default pick) on purpose: once there's real
+credit on the account, spending a fraction of a cent per call is the actual
+fix for "hits the rate limit every time," not a lower per-token price.
 
-The free-model lineup rotates as providers' promotional windows change —
-verify current IDs at https://openrouter.ai/models?max_price=0 and adjust
-OPENROUTER_MODELS below if one of these gets pulled.
+The lineup rotates as providers' promotional windows and price lists
+change — verify current IDs/pricing at https://openrouter.ai/models and
+adjust OPENROUTER_MODELS below if one of these gets pulled or repriced.
 """
 
 import httpx
@@ -17,16 +22,16 @@ from .base import ModelAdapter, AdapterError, RateLimitError, extract_openai_con
 
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1"
 
-# Free-tier models (":free" suffix = $0/token). Rotates — verified live
-# against GET /api/v1/models on 2026-08-20; re-check the URL above if one
-# of these starts 404ing with "unavailable for free."
+# Verified live against GET /api/v1/models on 2026-08-21.
 #
-# gpt-oss-20b and nemotron are reasoning models: they spend completion
-# tokens on an internal "reasoning" field before the final answer, and can
-# exhaust max_tokens mid-thought with no visible content at all (finish_reason
-# "length", content: null). Fine to offer, but not as the default — a plain
-# instruct model behaves predictably at low token budgets.
+# gpt-oss-20b and nemotron (both free) are reasoning models: they spend
+# completion tokens on an internal "reasoning" field before the final
+# answer, and can exhaust max_tokens mid-thought with no visible content at
+# all (finish_reason "length", content: null). Fine to offer, but not as
+# the default — a plain instruct model behaves predictably at low budgets.
 OPENROUTER_MODELS = [
+    "mistralai/mistral-nemo",              # paid, ~$0.02+$0.03 per 1M tokens
+    "meta-llama/llama-3.1-8b-instruct",    # paid, ~$0.05+$0.08 per 1M tokens
     "google/gemma-4-31b-it:free",
     "z-ai/glm-5.2:free",
     "liquid/lfm-2.5-2.6b:free",
