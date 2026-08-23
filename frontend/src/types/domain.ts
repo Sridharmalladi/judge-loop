@@ -5,7 +5,7 @@ export type RunMode = "self_refine" | "cross_model" | "prompt_optimization";
 // real: this app's own shared backend keys.
 export type RunSource = "byok" | "real";
 
-export type StepKind = "prompt" | "generation" | "evaluation" | "critique" | "refinement";
+export type StepKind = "prompt" | "generation" | "evaluation" | "critique";
 export type StepStatus = "locked" | "active" | "complete";
 
 export type CharacterState = "idle" | "thinking" | "writing" | "talking" | "nod" | "shake" | "celebrate" | "sad";
@@ -47,11 +47,10 @@ export interface PipelineRunState {
 }
 
 export const STEP_SUBTITLES: Record<StepKind, string> = {
-  prompt: "The starting question or task sent to the model",
-  generation: "The model writes its response — tokens stream in live",
-  evaluation: "Each quality dimension is scored on a 0–100 rubric",
-  critique: "The judge reviews the response and identifies weaknesses",
-  refinement: "A new, improved response incorporating the feedback",
+  prompt: "The question or task the model is asked to answer",
+  generation: "The model writes its answer, live, word by word",
+  evaluation: "Every quality dimension gets a score from 0 to 100",
+  critique: "The judge reads the answer and points out what could be better",
 };
 
 export const STEP_LABELS: Record<StepKind, string> = {
@@ -59,5 +58,4 @@ export const STEP_LABELS: Record<StepKind, string> = {
   generation: "2. GENERATION",
   evaluation: "3. EVALUATION",
   critique: "4. CRITIQUE",
-  refinement: "5. REFINEMENT",
 };

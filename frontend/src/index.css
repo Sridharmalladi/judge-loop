@@ -167,10 +167,6 @@ input[type="submit"] {
   opacity: 0.25;
 }
 
-.glow-win {
-  box-shadow: 0 0 18px 3px currentColor;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .parallax-layer {
     animation: none !important;

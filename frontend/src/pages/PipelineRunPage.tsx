@@ -177,9 +177,9 @@ function RunView({
             </p>
             {bestRound && bestRound.round !== state.history[state.history.length - 1].round && (
               <p className="mt-1 text-xs text-hud-amber">
-                Best was round {bestRound.round} at {bestRound.score}/100 — later rounds didn't beat it. The judge
-                isn't perfectly consistent round to round, so "latest" isn't always "best"; check ROUND RANKING
-                below.
+                Round {bestRound.round} was the best one, at {bestRound.score}/100. Later rounds didn't beat it.
+                The judge isn't perfectly consistent from round to round, so the latest round isn't always the
+                best one. Check "Round Ranking" below to compare them.
               </p>
             )}
             {error && <p className="mt-1 text-xs text-hud-pink">{error}</p>}
@@ -205,7 +205,7 @@ function RunView({
         {selectedSnapshot && (
           <div className="mb-4 flex items-center justify-between rounded-md border-2 border-hud-amber bg-chrome px-4 py-2">
             <span className="font-pixel text-[10px] text-hud-amber">
-              REVIEWING ROUND {selectedSnapshot.round} — SCORE {selectedSnapshot.score}
+              REVIEWING ROUND {selectedSnapshot.round} · SCORE {selectedSnapshot.score}
             </span>
             <button
               onClick={() => setSelectedRound(null)}

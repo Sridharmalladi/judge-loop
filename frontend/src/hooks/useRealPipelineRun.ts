@@ -116,6 +116,21 @@ export function useRealPipelineRun({
       setState((s) => withLog(s, text, tone));
     }
 
+    // The real backend can resolve a whole round in well under a second —
+    // too fast for a "generator writes, judge scores, judge critiques"
+    // exchange between two characters to actually read. These are a floor
+    // on how long each beat holds on screen, independent of how fast the
+    // response already arrived, so the back-and-forth stays followable
+    // whether the round took 400ms or 4s server-side.
+    const ROUND_INTRO_MS = 350; // beat before the round's first step lights up
+    const PROMPT_LIGHT_MS = 300; // step lights up before its content lands
+    const PROMPT_HOLD_MS = 900; // time to actually read the prompt
+    const POST_GENERATION_MS = 500; // beat after the draft before the judge visibly steps in
+    const JUDGE_THINK_MS = 1100; // "judge is scoring" — the moment that most needs weight
+    const POST_SCORE_MS = 600; // let the number land before the critique starts
+    const ROUND_OUTRO_MS = 700; // beat after the round settles, before the next one begins
+    const STREAM_STEP_MS = 24; // per-chunk delay for the generation/critique text reveal
+
     async function streamInto(kind: StepKind, text: string) {
       updateStep(kind, { status: "active", content: "" });
       const safeText = text || "(empty response)";
@@ -126,7 +141,7 @@ export function useRealPipelineRun({
         acc = safeText.slice(0, i + chunk);
         updateStep(kind, { content: acc });
         setState((s) => (cancelled() ? s : { ...s, tokenCount: s.tokenCount + Math.round(chunk / 4) }));
-        await sleep(16, cancelled);
+        await sleep(STREAM_STEP_MS, cancelled);
       }
       if (cancelled()) return;
       updateStep(kind, { content: safeText, status: "complete" });
@@ -136,32 +151,32 @@ export function useRealPipelineRun({
       const round = ev.iteration_number;
       if (cancelled()) return;
       setState((s) => ({ ...s, round, steps: emptySteps() }));
-      await sleep(150, cancelled);
+      await sleep(ROUND_INTRO_MS, cancelled);
 
       // 1. PROMPT — the composed prompt (original + injected judge feedback
       // for round > 1) isn't sent over the wire, so this shows the original
       // task every round rather than guess at the exact server-side text.
       updateStep("prompt", { status: "active", content: "" });
-      await sleep(200, cancelled);
+      await sleep(PROMPT_LIGHT_MS, cancelled);
       if (cancelled()) return;
       updateStep("prompt", { status: "complete", content: prompt });
-      await sleep(150, cancelled);
+      await sleep(PROMPT_HOLD_MS, cancelled);
 
       // 2. GENERATION — real model output
-      pushLog(`Round ${round} — ${activeLabel} is responding…`);
+      pushLog(`Round ${round}: ${activeLabel} is responding…`);
       await streamInto("generation", ev.response);
-      await sleep(200, cancelled);
+      await sleep(POST_GENERATION_MS, cancelled);
 
       // 3. EVALUATION — real judge score, x10 to match the UI's /100 scale
       pushLog(`Judge is scoring round ${round}…`);
       updateStep("evaluation", { status: "active", content: "" });
-      await sleep(400, cancelled);
+      await sleep(JUDGE_THINK_MS, cancelled);
       if (cancelled()) return;
       const scaled = Math.round(ev.score * 10);
       const dims = toScoreDimensions(ev.dimension_scores ?? {});
       updateStep("evaluation", { status: "complete", content: `Overall: ${scaled}/100`, scores: dims });
       pushLog(`Score: ${scaled}/100`, scaled >= 70 ? "good" : scaled < 40 ? "bad" : "info");
-      await sleep(200, cancelled);
+      await sleep(POST_SCORE_MS, cancelled);
 
       // 4. CRITIQUE — real judge critique/strengths/weaknesses/suggestions
       pushLog(`Judge critique coming in for round ${round}…`);
@@ -184,7 +199,7 @@ export function useRealPipelineRun({
         { kind: "critique", status: "complete", content: critiqueText },
       ];
       setState((s) => ({ ...s, history: [...s.history, { round, score: scaled, steps: roundSteps }] }));
-      await sleep(300, cancelled);
+      await sleep(ROUND_OUTRO_MS, cancelled);
     }
 
     // A single chained promise sequences reveals in arrival order — every
@@ -242,7 +257,7 @@ export function useRealPipelineRun({
         activeLabel = msg.generator;
         setGeneratorLabel(msg.generator);
         if (msg.evaluator) setEvaluatorLabel(msg.evaluator);
-        pushLog(`Connected — ${msg.generator} starting round 1…`);
+        pushLog(`Connected. ${msg.generator} is starting round 1…`);
       } else if (msg.type === "iteration") {
         revealChain = revealChain.then(() => (cancelled() ? undefined : revealIteration(msg)));
       } else if (msg.type === "complete") {
@@ -250,7 +265,7 @@ export function useRealPipelineRun({
           setState((s) =>
             withLog(
               { ...s, isRunning: false, isDone: true },
-              `Run complete — final score ${s.history[s.history.length - 1]?.score ?? "—"}/100`,
+              `Run complete. Final score ${s.history[s.history.length - 1]?.score ?? "0"}/100`,
               "good",
             ),
           ),

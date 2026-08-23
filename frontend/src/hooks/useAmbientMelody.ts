@@ -38,7 +38,7 @@ export function useAmbientMelody() {
     if (bedRef.current) return;
 
     const master = ctx.createGain();
-    master.gain.value = 0.1; // ~25% louder than the original 0.08
+    master.gain.value = 0.2; // doubled, previous level was too quiet to notice
     master.connect(ctx.destination);
 
     // soft, rounded tone — rolls off the buzzy upper harmonics

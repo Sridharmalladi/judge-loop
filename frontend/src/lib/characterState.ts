@@ -19,10 +19,7 @@ export function stepsToCharacterState(
     case "evaluation":
       return { state: "thinking", caption: "judge is scoring…" };
     case "critique":
-    case "refinement":
       return { state: "talking", caption: "reviewing its own work…" };
-    default:
-      return { state: "idle", caption: "" };
   }
 }
 
@@ -54,9 +51,9 @@ export function stepsToJudgeState(
       return { state: "thinking", caption: "scoring the response…" };
     case "critique":
       if (lastScore == null) return { state: "talking", caption: "delivering feedback…" };
-      if (lastScore >= 70) return { state: "nod", caption: `${lastScore}/100 — solid` };
-      if (lastScore < 40) return { state: "shake", caption: `${lastScore}/100 — needs work` };
-      return { state: "talking", caption: `${lastScore}/100 — some notes` };
+      if (lastScore >= 70) return { state: "nod", caption: `${lastScore}/100, solid` };
+      if (lastScore < 40) return { state: "shake", caption: `${lastScore}/100, needs work` };
+      return { state: "talking", caption: `${lastScore}/100, some notes` };
     default:
       return { state: "idle", caption: "" };
   }

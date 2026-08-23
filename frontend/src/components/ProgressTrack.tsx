@@ -77,7 +77,7 @@ export default function ProgressTrack({
                 {isNewBest && !isSelected ? " ★" : ""}
               </span>
               <span className="font-mono text-xs" style={{ color: textColor }}>
-                {done ? entry!.score : isCurrent ? "···" : "—"}
+                {done ? entry!.score : isCurrent ? "···" : "·"}
               </span>
 
               <AnimatePresence>
@@ -91,7 +91,7 @@ export default function ProgressTrack({
                     style={{ borderColor: "var(--color-hud-green)" }}
                   >
                     <p className="mb-1 text-center font-pixel text-[9px] text-hud-green">
-                      ROUND {r} — {entry!.score}/100
+                      ROUND {r} · {entry!.score}/100
                     </p>
                     <ScoreRadar dims={dims} />
                   </motion.div>
@@ -115,8 +115,8 @@ export default function ProgressTrack({
       {clickable && (
         <p className="mt-2 text-[11px] text-hud-text-dim">
           {selectedRound
-            ? `Viewing round ${selectedRound} — click again, or "clear" to return to the latest.`
-            : "Hover a round for its score breakdown, or click to review its steps."}
+            ? `Viewing round ${selectedRound}. Click it again, or choose "clear" to jump back to the latest round.`
+            : "Hover over a round to see its score breakdown, or click one to review its steps."}
         </p>
       )}
     </div>

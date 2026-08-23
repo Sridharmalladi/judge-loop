@@ -7,13 +7,13 @@ const TABS: { id: RunSource; label: string; accent: string; blurb: string }[] = 
     id: "real",
     label: "REAL",
     accent: "var(--color-hud-pink)",
-    blurb: "Uses this app's own backend keys — no setup needed. 🔥 = the model most likely to work right now.",
+    blurb: "Ready right away, using this app's own backend keys. Nothing to set up. The 🔥 marks whichever model is working best right now.",
   },
   {
     id: "byok",
     label: "BYOK",
     accent: "var(--color-hud-cyan)",
-    blurb: "Bring your own free API key(s). Runs on your quota, not shared — you control the rate limits.",
+    blurb: "Bring your own free API key and run on your own quota instead of a shared one. You're the one in control of the rate limits.",
   },
 ];
 

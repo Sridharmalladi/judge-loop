@@ -24,19 +24,19 @@ export default function LandingPage() {
             "0 0 6px var(--color-chrome-dark), 0 0 10px var(--color-chrome-dark), 0 0 16px var(--color-hud-cyan)",
         }}
       >
-        Watch an LLM improve its own answer, round after round — generate, get judged, revise, repeat. Every round
-        is scored on relevance, coherence, completeness, conciseness, accuracy, and creativity, so you can watch
-        exactly where it's improving, and where it isn't.
+        Watch an LLM improve its own answer, round after round. It writes, gets judged, revises, and tries again.
+        Every round is scored on relevance, coherence, completeness, conciseness, accuracy, and creativity, so you
+        can see exactly where it's getting better, and where it still isn't.
       </p>
       <p
         className="mt-3 max-w-xl text-xs leading-relaxed text-hud-text-dim"
         style={{ textShadow: "0 0 6px var(--color-chrome-dark), 0 0 10px var(--color-chrome-dark)" }}
       >
-        Next up: real prompt optimization — evolving the instructions themselves across a whole test set, not just
-        one answer at a time.
+        Coming next: real prompt optimization, where the instructions themselves evolve across a whole set of test
+        cases, not just one answer at a time.
       </p>
       <p className="mt-8 text-xs uppercase tracking-wide text-hud-text-dim">
-        Hover a mode to see what it does, then pick one
+        Hover over a mode to see what it does, then pick one to get started
       </p>
       <div className="mt-4">
         <SourceTabs selected={null} onSelect={pick} />

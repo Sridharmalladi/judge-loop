@@ -4,6 +4,7 @@ import TrackSelectCard from "../components/TrackSelectCard";
 import { DEMO_PROMPTS } from "../hooks/mockContent";
 import { useLiveModels } from "../hooks/useLiveModels";
 import { useByokKeys } from "../hooks/useByokKeys";
+import { API_BASE } from "../lib/api";
 import type { RunMode, RunSource } from "../types/domain";
 
 const ROUTES: Record<RunMode, string> = {
@@ -29,6 +30,17 @@ const KEY_SIGNUP_URL: Record<string, string> = {
 // are short asks ("explain X", "write a description for Y"), not essays.
 const PROMPT_MAX_CHARS = 500;
 
+// A fresh random four each time, so the suggestions feel alive instead of
+// the same four buttons on every visit.
+function pickSuggestions(): string[] {
+  const pool = [...DEMO_PROMPTS];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, 4);
+}
+
 export default function StartScreen() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -38,8 +50,9 @@ export default function StartScreen() {
     if (!source) navigate("/");
   }, [source, navigate]);
 
-  const [prompt, setPrompt] = useState(DEMO_PROMPTS[0]);
-  const { data: modelsData, error: modelsError, loading: modelsLoading } = useLiveModels(
+  const [suggestions] = useState(pickSuggestions);
+  const [prompt, setPrompt] = useState(suggestions[0]);
+  const { data: modelsData, error: modelsError, loading: modelsLoading, wakingUp } = useLiveModels(
     source === "byok" ? "byok" : "real",
   );
 
@@ -82,7 +95,7 @@ export default function StartScreen() {
   if (!source) return null;
 
   function go(mode: RunMode) {
-    const cleanPrompt = prompt.trim().slice(0, PROMPT_MAX_CHARS) || DEMO_PROMPTS[0];
+    const cleanPrompt = prompt.trim().slice(0, PROMPT_MAX_CHARS) || suggestions[0];
     const base = { prompt: cleanPrompt, provider, model };
     const withKey = source === "byok" ? { generatorApiKey: byokKeys[provider] } : {};
     if (mode === "cross_model") {
@@ -120,8 +133,8 @@ export default function StartScreen() {
         </div>
         {source === "byok" && (
           <p className="mt-3 text-xs text-hud-cyan">
-            Your key is used only for this run and kept in this browser tab — never sent anywhere but this app,
-            never stored on the server.
+            Your key is used only for this run and kept right here in this browser tab. It's never sent anywhere
+            but this app, and never stored on the server.
           </p>
         )}
       </header>
@@ -141,7 +154,7 @@ export default function StartScreen() {
           className="w-full resize-none rounded-sm border-2 border-chrome-border bg-chrome-dark p-3 font-mono text-sm text-hud-text outline-none focus:border-hud-green"
         />
         <div className="mt-3 flex flex-wrap gap-2">
-          {DEMO_PROMPTS.map((p) => (
+          {suggestions.map((p) => (
             <button
               key={p}
               onClick={() => setPrompt(p)}
@@ -154,16 +167,25 @@ export default function StartScreen() {
       </div>
 
       <div className="mx-auto mb-6 max-w-2xl rounded-md border-2 border-chrome-border bg-chrome p-4">
-        <div className="mb-2 flex items-baseline justify-between">
+        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <label className="block text-xs uppercase tracking-wide text-hud-text-dim">
-            Model — generator (Self-Refine / Prompt Opt / Cross-Model)
+            Model, the generator for Self-Refine, Prompt Opt, and Cross-Model
           </label>
-          {featured.length > 0 && <span className="text-[11px] text-hud-text-dim">🔥 = most reliable now</span>}
+          {featured.length > 0 && (
+            <span className="flex-shrink-0 text-[11px] text-hud-text-dim">🔥 = most reliable now</span>
+          )}
         </div>
-        {modelsLoading && <p className="text-sm text-hud-text-dim">Connecting to backend…</p>}
+        {modelsLoading && (
+          <p className="text-sm text-hud-text-dim">
+            {wakingUp
+              ? "Waking up the server. It runs on free hosting that naps when idle, so the first request can take up to a minute."
+              : "Connecting to backend…"}
+          </p>
+        )}
         {modelsError && (
           <p className="text-sm text-hud-pink">
-            Backend unreachable at localhost:8000 — is it running? {SOURCE_LABEL[source]} mode needs it.
+            Can't reach the backend at {API_BASE}. {SOURCE_LABEL[source]} mode needs it, try refreshing in a
+            moment.
           </p>
         )}
         {modelsData && modelsData.providers.length === 0 && (
@@ -215,7 +237,7 @@ export default function StartScreen() {
       {modelsData && modelsData.providers.length > 0 && (
         <div className="mx-auto mb-10 max-w-2xl rounded-md border-2 border-chrome-border bg-chrome p-4">
           <label className="mb-2 block text-xs uppercase tracking-wide text-hud-text-dim">
-            Judge model — for Cross-Model only
+            Judge model, used for Cross-Model only
           </label>
           <div className="grid grid-cols-2 gap-3">
             <select
@@ -260,7 +282,7 @@ export default function StartScreen() {
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
         <TrackSelectCard
           title="SELF-REFINE"
-          description="One model generates, judges its own work, and rewrites — round after round."
+          description="One model writes an answer, judges its own work, and rewrites it, round after round."
           accent="var(--color-hud-green)"
           icon={<CarIcon />}
           onSelect={() => go("self_refine")}
@@ -269,7 +291,7 @@ export default function StartScreen() {
         />
         <TrackSelectCard
           title="CROSS-MODEL"
-          description="One model answers, a different model judges it — feedback loops back for a sharper next round."
+          description="One model answers, a different model judges it, and the feedback shapes a sharper next round."
           accent="var(--color-hud-cyan)"
           icon={<FlagIcon />}
           onSelect={() => go("cross_model")}
@@ -292,8 +314,8 @@ export default function StartScreen() {
         style={{ textShadow: "0 0 6px var(--color-chrome-dark), 0 0 6px var(--color-chrome-dark)" }}
       >
         {source === "byok"
-          ? "BYOK mode — calls run with your own API key(s), sent only for the run you start."
-          : "Real mode — calls run through this app's own backend keys."}
+          ? "BYOK mode: every call runs with your own API key, sent only for the run you start."
+          : "Real mode: every call runs through this app's own backend keys."}
       </p>
     </div>
   );
