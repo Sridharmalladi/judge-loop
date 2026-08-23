@@ -40,6 +40,18 @@ OPENROUTER_MODELS = [
     "nvidia/nemotron-3-nano-30b-a3b:free",
 ]
 
+# A paid model's rate limit isn't OpenRouter's — OpenRouter itself has no
+# RPM cap on paid usage. A 429 there is the UPSTREAM backend (whichever
+# provider — DeepInfra, etc. — actually serves that model right now) being
+# congested, which a paid account can still hit same as anyone else.
+# OpenRouter's native `models` fallback array (as opposed to a single
+# `model` string) handles this server-side: list a primary + backups and
+# it auto-retries the next one on rate-limit/downtime within the SAME
+# request — no 429 ever reaches us. Scoped to paid<->paid only: falling
+# back from a paid pick to a free one (or vice versa) would silently spend
+# a BYOK caller's money on a model they didn't choose.
+PAID_MODELS = ["mistralai/mistral-nemo", "meta-llama/llama-3.1-8b-instruct"]
+
 
 class OpenRouterAdapter(ModelAdapter):
 
@@ -56,6 +68,18 @@ class OpenRouterAdapter(ModelAdapter):
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
+        payload = {
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        if model in PAID_MODELS:
+            # Primary first, then the other paid model as a same-tier
+            # fallback — see PAID_MODELS comment above.
+            payload["models"] = [model] + [m for m in PAID_MODELS if m != model]
+        else:
+            payload["model"] = model
+
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
                 f"{OPENROUTER_API_URL}/chat/completions",
@@ -67,12 +91,7 @@ class OpenRouterAdapter(ModelAdapter):
                     "HTTP-Referer": "https://github.com/Sridharmalladi/judge-loop",
                     "X-Title": "Judge Loop",
                 },
-                json={
-                    "model": model,
-                    "messages": messages,
-                    "temperature": temperature,
-                    "max_tokens": max_tokens,
-                },
+                json=payload,
             )
 
         if response.status_code == 429:

@@ -43,11 +43,6 @@ class StartRunRequest(BaseModel):
         return self
 
 
-class CompareRunsRequest(BaseModel):
-    """Compare two or more past runs side by side."""
-    run_ids: list[str] = Field(min_length=2, max_length=5)
-
-
 # ── WebSocket events (server → client) ──
 
 class IterationEvent(BaseModel):

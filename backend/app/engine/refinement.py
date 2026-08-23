@@ -17,8 +17,7 @@ from datetime import datetime
 from typing import Optional, Callable, Awaitable
 
 from ..models.domain import (
-    RefinementRun, Iteration, EvaluationResult,
-    ModelConfig, RunStatus,
+    RefinementRun, Iteration, RunStatus,
 )
 from ..models.schemas import IterationEvent, RunStartedEvent, RunErrorEvent
 from ..adapters.registry import registry

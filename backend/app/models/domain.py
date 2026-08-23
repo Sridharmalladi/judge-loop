@@ -106,11 +106,6 @@ class Iteration(BaseModel):
     latency_ms: float
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
-    @property
-    def improved_over(self) -> Optional[float]:
-        """Can only be computed when compared to previous iteration."""
-        return None  # Computed by the run, not the iteration
-
 
 class RefinementRun(BaseModel):
     """A complete refinement execution — the top-level entity.
@@ -172,14 +167,3 @@ class RefinementRun(BaseModel):
         if self.has_converged():
             self.status = RunStatus.CONVERGED
             self.completed_at = datetime.utcnow()
-
-
-# ── Prompt optimization specific ──
-
-class PromptTemplate(BaseModel):
-    """For prompt optimization mode — the template that evolves."""
-    version: int
-    template: str
-    avg_score: Optional[float] = None
-    test_scores: list[float] = []
-    parent_version: Optional[int] = None  # Which version this evolved from

@@ -20,17 +20,14 @@ logger = logging.getLogger(__name__)
 
 class ModelAdapter(ABC):
     """Abstract base for all LLM provider adapters.
-    
+
     Every adapter must implement:
     - generate(): send a prompt, get a response
     - list_models(): return available model names
-    - health_check(): verify the API key works
     """
 
     def __init__(self, api_key: str):
         self.api_key = api_key
-        self._request_count = 0
-        self._last_request_time: Optional[float] = None
 
     @abstractmethod
     async def generate(
@@ -58,15 +55,6 @@ class ModelAdapter(ABC):
         """Return model names available on this provider."""
         ...
 
-    async def health_check(self) -> bool:
-        """Verify the API key works. Default: try listing models."""
-        try:
-            models = await self.list_models()
-            return len(models) > 0
-        except Exception as e:
-            logger.warning(f"Health check failed: {e}")
-            return False
-
     async def _timed_generate(
         self,
         prompt: str,
@@ -87,8 +75,6 @@ class ModelAdapter(ABC):
             )
             elapsed = (time.perf_counter() - start) * 1000
             result["latency_ms"] = elapsed
-            self._request_count += 1
-            self._last_request_time = time.time()
             return result
         except Exception as e:
             elapsed = (time.perf_counter() - start) * 1000

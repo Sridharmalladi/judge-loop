@@ -19,7 +19,7 @@ PROMPT_OPTIMIZATION: The prompt TEMPLATE evolves. Instead of refining one
 from abc import ABC, abstractmethod
 from typing import Optional
 from ..models.domain import (
-    ModelConfig, EvaluationResult, RefinementStrategy, Iteration
+    ModelConfig, RefinementStrategy, Iteration
 )
 
 

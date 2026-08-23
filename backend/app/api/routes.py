@@ -12,7 +12,7 @@ from ..models.schemas import (
     AvailableModelsResponse, IterationEvent,
 )
 from ..models.domain import (
-    RefinementRun, ModelConfig, EvaluationCriteria, RunStatus,
+    RefinementRun, ModelConfig, EvaluationCriteria,
 )
 from ..adapters.registry import registry, FULL_MODEL_CATALOG
 from ..engine.refinement import run_refinement
