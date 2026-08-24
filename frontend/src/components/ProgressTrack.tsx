@@ -62,7 +62,7 @@ export default function ProgressTrack({
               onMouseEnter={() => done && setHoveredRound(r)}
               onMouseLeave={() => setHoveredRound(null)}
               title={done ? `View round ${r}` : undefined}
-              className={`relative flex flex-col items-center justify-center gap-1 rounded-sm border-2 py-3 transition-all disabled:cursor-default ${
+              className={`relative flex flex-col items-center justify-center gap-1 rounded-sm border-2 py-3 transition-all ${
                 isNewBest && !isSelected ? "animate-pulse-glow" : ""
               }`}
               style={{
@@ -87,7 +87,7 @@ export default function ProgressTrack({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute left-1/2 top-full z-30 mt-2 w-96 -translate-x-1/2 cursor-default rounded-md border-2 bg-chrome p-2 text-left shadow-lg"
+                    className="absolute left-1/2 top-full z-30 mt-2 w-96 -translate-x-1/2 rounded-md border-2 bg-chrome p-2 text-left shadow-lg"
                     style={{ borderColor: "var(--color-hud-green)" }}
                   >
                     <p className="mb-1 text-center font-pixel text-[9px] text-hud-green">

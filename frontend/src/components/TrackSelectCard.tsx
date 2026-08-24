@@ -23,7 +23,7 @@ export default function TrackSelectCard({
       disabled={disabled}
       title={disabled ? disabledReason : undefined}
       whileHover={disabled ? undefined : { y: -4 }}
-      className="group flex flex-col items-center gap-4 rounded-lg border-2 border-chrome-border bg-chrome p-6 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-40 enabled:hover:border-[--accent]"
+      className="group flex flex-col items-center gap-4 rounded-lg border-2 border-chrome-border bg-chrome p-6 text-center transition-colors disabled:opacity-40 enabled:hover:border-[--accent]"
       style={{ ["--accent" as string]: accent }}
     >
       <div
