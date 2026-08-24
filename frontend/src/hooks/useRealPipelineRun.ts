@@ -235,7 +235,18 @@ export function useRealPipelineRun({
           temperature: 0.7,
           max_tokens: 640,
           max_iterations: maxRounds,
-          convergence_threshold: 0.5,
+          // 0.5 (on a 0-10 judge scale) sounds tight but isn't — judges
+          // cluster on half-point values (7.5, 8.0, 8.5...), so consecutive
+          // rounds landing within 0.5 of each other is the norm, not a real
+          // plateau. That was tripping "converged" after round 2 on almost
+          // every run, cutting the 3-round budget short before the loop
+          // ever got to show its actual trajectory. maxRounds is already
+          // the cost lever (see its definition) — convergence saves at
+          // most one round on top of that, which isn't worth losing the
+          // very thing this app is supposed to demonstrate. has_converged()
+          // compares with strict "<", so 0 can never be beaten — every run
+          // now plays out its full maxRounds.
+          convergence_threshold: 0,
         }),
       );
     };
