@@ -38,8 +38,15 @@ class Settings(BaseSettings):
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
     def get_cors_origins(self) -> list[str]:
-        if self.frontend_url and self.frontend_url not in self.cors_origins:
-            return [*self.cors_origins, self.frontend_url]
+        # frontend_url set means this is a real deploy — allow only the real
+        # frontend, not the dev defaults too. A deployed backend has no
+        # legitimate reason to accept a browser request whose Origin is
+        # localhost, and cors_origins' defaults used to be appended
+        # unconditionally, so production was quietly trusting localhost:5173
+        # (with credentials) right alongside the real site. Local dev
+        # (frontend_url unset) keeps the old localhost defaults.
+        if self.frontend_url:
+            return [self.frontend_url]
         return self.cors_origins
 
     def get_huggingface_keys(self) -> list[str]:
