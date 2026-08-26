@@ -76,22 +76,25 @@ class SelfRefineStrategy(RefinementStrategyBase):
         if not previous_iterations:
             return original_prompt
 
-        # Build feedback chain from ALL previous iterations
-        last = previous_iterations[-1]
-        feedback_block = self._format_feedback(last)
+        # Every prior attempt, not just the last one — round 3 sees round 1's
+        # AND round 2's full responses and feedback, not just round 2's.
+        attempts_block = "\n\n".join(
+            f"""## Attempt {it.iteration_number} (scored {it.evaluation.score}/10)
+{it.response}
+
+## Judge's feedback on attempt {it.iteration_number}
+{self._format_feedback(it)}"""
+            for it in previous_iterations
+        )
 
         return f"""## Original task
 {original_prompt}
 
-## Your previous attempt (scored {last.evaluation.score}/10)
-{last.response}
-
-## Judge's feedback
-{feedback_block}
+{attempts_block}
 
 ## Your job
-Write an improved response that addresses ALL the feedback above. 
-Focus especially on the weaknesses and suggestions. 
+Write an improved response that addresses ALL the feedback above, across every attempt so far.
+Focus especially on the weaknesses and suggestions from the most recent attempt.
 Do NOT mention the feedback or scoring — just give the improved answer directly."""
 
     def get_evaluator_config(
@@ -134,20 +137,22 @@ class CrossModelStrategy(RefinementStrategyBase):
         if not previous_iterations:
             return original_prompt
 
-        last = previous_iterations[-1]
-        feedback_block = self._format_feedback(last)
+        attempts_block = "\n\n".join(
+            f"""## Attempt {it.iteration_number} (scored {it.evaluation.score}/10 by an external judge)
+{it.response}
+
+## External judge's feedback on attempt {it.iteration_number}
+{self._format_feedback(it)}"""
+            for it in previous_iterations
+        )
 
         return f"""## Original task
 {original_prompt}
 
-## Your previous attempt (scored {last.evaluation.score}/10 by an external judge)
-{last.response}
-
-## External judge's feedback
-{feedback_block}
+{attempts_block}
 
 ## Your job
-Write an improved response addressing the external judge's feedback.
+Write an improved response addressing the external judge's feedback across every attempt so far.
 Do NOT mention the feedback or scoring — just give the improved answer directly."""
 
     def get_evaluator_config(
@@ -194,19 +199,23 @@ class PromptOptimizationStrategy(RefinementStrategyBase):
         if not previous_iterations:
             return original_prompt
 
-        last = previous_iterations[-1]
+        attempts_block = "\n\n".join(
+            f"""## Attempt {it.iteration_number} (scored {it.evaluation.score}/10)
+{it.response}
+
+## Feedback on attempt {it.iteration_number}
+{it.evaluation.critique}
+Weaknesses: {'; '.join(it.evaluation.weaknesses)}
+Suggestions: {'; '.join(it.evaluation.suggestions)}"""
+            for it in previous_iterations
+        )
+
         return f"""## Original task
 {original_prompt}
 
-## Previous attempt (scored {last.evaluation.score}/10)
-{last.response}
+{attempts_block}
 
-## Feedback
-{last.evaluation.critique}
-Weaknesses: {'; '.join(last.evaluation.weaknesses)}
-Suggestions: {'; '.join(last.evaluation.suggestions)}
-
-## Improve the response based on the feedback above."""
+## Improve the response based on all the feedback above."""
 
     def get_evaluator_config(
         self,
