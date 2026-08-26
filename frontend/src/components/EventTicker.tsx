@@ -8,10 +8,19 @@ const TONE_COLOR: Record<TickerEntry["tone"], string> = {
 };
 
 // Content column is max-w-5xl (1024px), centered — the left gutter is
-// whatever's left of (100vw - 1024px) / 2. Center this box within that
-// gutter rather than pinning it to the viewport edge; floor at 0.75rem so
-// it never goes negative (overlapping content) on narrower viewports.
-const CENTER_IN_GUTTER = "max(0.75rem, calc((100vw - 1024px) / 4 - 5.5rem))";
+// whatever's left of (100vw - 1024px) / 2. Center this box (w-36 = 9rem)
+// within that gutter: box's left edge = gutter_start + (gutter_width -
+// box_width) / 2, which reduces to (100vw - 1024px) / 4 - 4.5rem.
+//
+// There's no floor on this — a floor can only push the box toward the
+// viewport edge, it can't stop it from also overlapping the content column
+// once the gutter gets narrower than the box, which is exactly the "stuck
+// in the corner, on top of everything" look this was meant to fix. Below
+// 1024 + 2*(box_width + a little breathing room) ≈ 1320px of viewport
+// width, the gutter is genuinely too narrow to hold the box without
+// covering real content, so the component hides itself entirely instead
+// (see the [@media] guard below) rather than show something broken.
+const CENTER_IN_GUTTER = "calc((100vw - 1024px) / 4 - 4.5rem)";
 
 export default function EventTicker({ entries }: { entries: TickerEntry[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -25,7 +34,7 @@ export default function EventTicker({ entries }: { entries: TickerEntry[] }) {
 
   return (
     <div
-      className="fixed top-28 z-[25] flex max-h-56 w-44 flex-col rounded-md border-2 border-chrome-border bg-chrome-dark/95 backdrop-blur-sm"
+      className="fixed top-28 z-[25] hidden max-h-56 w-36 flex-col rounded-md border-2 border-chrome-border bg-chrome-dark/95 backdrop-blur-sm [@media(min-width:1320px)]:flex"
       style={{ left: CENTER_IN_GUTTER }}
     >
       <p className="flex-shrink-0 border-b-2 border-chrome-border px-2 py-1.5 font-pixel text-[8px] text-hud-text-dim">
