@@ -190,13 +190,14 @@ export function useRealPipelineRun({
           .filter(Boolean)
           .join("\n") || "No critique returned.";
       await streamInto("critique", critiqueText);
+      updateStep("critique", { weaknesses: ev.weaknesses, suggestions: ev.suggestions });
 
       if (cancelled()) return;
       const roundSteps: StepState[] = [
         { kind: "prompt", status: "complete", content: prompt },
         { kind: "generation", status: "complete", content: ev.response || "(empty response)" },
         { kind: "evaluation", status: "complete", content: `Overall: ${scaled}/100`, scores: dims },
-        { kind: "critique", status: "complete", content: critiqueText },
+        { kind: "critique", status: "complete", content: critiqueText, weaknesses: ev.weaknesses, suggestions: ev.suggestions },
       ];
       setState((s) => ({ ...s, history: [...s.history, { round, score: scaled, steps: roundSteps }] }));
       await sleep(ROUND_OUTRO_MS, cancelled);

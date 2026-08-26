@@ -26,6 +26,12 @@ export interface StepState {
   status: StepStatus;
   content: string;
   scores?: ScoreDimension[];
+  // Only set on the "critique" step — the judge's structured feedback,
+  // kept alongside the pre-formatted `content` blob so a same/declining
+  // score can be explained with the judge's own actual words instead of
+  // parsing prefix characters back out of formatted text.
+  weaknesses?: string[];
+  suggestions?: string[];
 }
 
 export interface RoundResult {

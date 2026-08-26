@@ -9,9 +9,50 @@ import SpeechBubble from "../components/SpeechBubble";
 import Leaderboard from "../components/Leaderboard";
 import { useRealPipelineRun } from "../hooks/useRealPipelineRun";
 import { stepsToCharacterState, stepsToJudgeState } from "../lib/characterState";
-import type { PipelineRunState } from "../types/domain";
+import type { PipelineRunState, RoundResult } from "../types/domain";
 
 type Variant = "self_refine" | "prompt_optimization" | "cross_model";
+
+// Round N vs round N-1 (not "vs the best round ever") — that's the actual
+// question a flat/declining score raises: did this specific revision help.
+// The explanation is built entirely from this run's own real judge output —
+// the per-dimension scores and the judge's actual weakness notes — not a
+// canned "judges are inconsistent" disclaimer.
+function explainScoreTrend(history: RoundResult[]): string | null {
+  if (history.length < 2) return null;
+  const last = history[history.length - 1];
+  const prev = history[history.length - 2];
+  if (last.score > prev.score) return null; // genuinely improved, nothing to explain
+
+  const lastDims = last.steps.find((s) => s.kind === "evaluation")?.scores ?? [];
+  const prevDims = prev.steps.find((s) => s.kind === "evaluation")?.scores ?? [];
+  const drops = lastDims
+    .map((d) => {
+      const before = prevDims.find((p) => p.label === d.label)?.value;
+      return before != null ? { label: d.label, before, after: d.value } : null;
+    })
+    .filter((d): d is { label: string; before: number; after: number } => d != null && d.before > d.after)
+    .sort((a, b) => b.before - b.after - (a.before - a.after));
+
+  const weaknesses = last.steps.find((s) => s.kind === "critique")?.weaknesses ?? [];
+
+  const trend =
+    last.score === prev.score
+      ? `Round ${last.round} scored identically to round ${prev.round} (${last.score}/100 both times).`
+      : `Round ${last.round} scored lower than round ${prev.round} (${prev.score} → ${last.score}).`;
+
+  const byDimension =
+    drops.length > 0
+      ? ` The drop is concentrated in ${drops
+          .slice(0, 2)
+          .map((d) => `${d.label} (${d.before} → ${d.after})`)
+          .join(" and ")}.`
+      : "";
+
+  const judgeNotes = weaknesses.length > 0 ? ` The judge's own notes on round ${last.round}: ${weaknesses.join("; ")}.` : "";
+
+  return `${trend}${byDimension}${judgeNotes}`;
+}
 
 // 3 rounds, not 4 — each round is 1-2 real API calls, and this is the
 // single biggest lever on token spend short of the user cutting a run
@@ -93,10 +134,7 @@ function RunView({
 
   const selectedSnapshot = selectedRound != null ? state.history.find((h) => h.round === selectedRound) : null;
   const stepsToShow = selectedSnapshot ? selectedSnapshot.steps : state.steps;
-  const bestRound = state.history.reduce<(typeof state.history)[number] | null>(
-    (best, h) => (h.score > (best?.score ?? -1) ? h : best),
-    null,
-  );
+  const scoreTrend = explainScoreTrend(state.history);
   // A hard "sad" reaction is only warranted when the run produced nothing —
   // an error after some rounds already scored is a stopped-early success,
   // not a failure, and the character/banner below both reflect that.
@@ -175,11 +213,9 @@ function RunView({
               Score: {state.history.map((h) => h.score).join(" → ")} over {state.history.length} round
               {state.history.length === 1 ? "" : "s"}
             </p>
-            {bestRound && bestRound.round !== state.history[state.history.length - 1].round && (
+            {scoreTrend && (
               <p className="mt-1 text-xs text-hud-amber">
-                Round {bestRound.round} was the best one, at {bestRound.score}/100. Later rounds didn't beat it.
-                The judge isn't perfectly consistent from round to round, so the latest round isn't always the
-                best one. Check "Round Ranking" below to compare them.
+                {scoreTrend} Check "Round Ranking" below to compare every round.
               </p>
             )}
             {error && <p className="mt-1 text-xs text-hud-pink">{error}</p>}

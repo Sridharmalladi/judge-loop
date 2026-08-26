@@ -34,7 +34,7 @@ export default function EventTicker({ entries }: { entries: TickerEntry[] }) {
 
   return (
     <div
-      className="fixed top-28 z-[25] hidden max-h-56 w-36 flex-col rounded-md border-2 border-chrome-border bg-chrome-dark/95 backdrop-blur-sm [@media(min-width:1320px)]:flex"
+      className="fixed top-[420px] z-[25] hidden max-h-56 w-36 flex-col rounded-md border-2 border-chrome-border bg-chrome-dark/95 backdrop-blur-sm [@media(min-width:1320px)]:flex"
       style={{ left: CENTER_IN_GUTTER }}
     >
       <p className="flex-shrink-0 border-b-2 border-chrome-border px-2 py-1.5 font-pixel text-[8px] text-hud-text-dim">

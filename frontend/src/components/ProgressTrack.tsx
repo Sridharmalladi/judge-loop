@@ -21,7 +21,10 @@ export default function ProgressTrack({
   onSelectRound: (round: number | null) => void;
 }) {
   const [hoveredRound, setHoveredRound] = useState<number | null>(null);
-  const rounds = Array.from({ length: maxRounds }, (_, i) => i + 1);
+  // Reveal tiles one at a time as the run actually reaches them, instead of
+  // showing every round's empty slot up front — `round` already tracks
+  // "the round currently being animated," so this needs no extra state.
+  const rounds = Array.from({ length: Math.min(round, maxRounds) }, (_, i) => i + 1);
   const clickable = history.length > 0;
   const latestRound = history.length > 0 ? history[history.length - 1] : null;
   const isLatestNewBest =
@@ -54,10 +57,13 @@ export default function ProgressTrack({
                 : "var(--color-hud-text-dim)";
 
           return (
-            <button
+            <motion.button
               key={r}
               type="button"
               disabled={!done}
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
               onClick={() => onSelectRound(isSelected ? null : r)}
               onMouseEnter={() => done && setHoveredRound(r)}
               onMouseLeave={() => setHoveredRound(null)}
@@ -97,7 +103,7 @@ export default function ProgressTrack({
                   </motion.div>
                 )}
               </AnimatePresence>
-            </button>
+            </motion.button>
           );
         })}
       </div>
